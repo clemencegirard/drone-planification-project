@@ -71,6 +71,7 @@ class Warehouse3D:
                 for j in range(width):
                     self.mat[i + top_left[0], j + top_left[1], h] = 1
 
+
     def add_storage_line(self, height: int, c1: tuple, c2: tuple):
         if not (0 <= height <= self.height):  # Check bounds
             return print(f"Level {height} out of bounds")
@@ -119,7 +120,7 @@ class Warehouse3D:
             print("There is an obstacle here")
 
 
-    def compute_manhattan_distance(self, c1, c2):
+    def compute_manhattan_distance(self, c1 : tuple , c2 : tuple ) -> int:
 
         x1, y1, z1 = c1
         x2, y2, z2 = c2
