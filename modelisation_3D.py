@@ -133,13 +133,13 @@ class Warehouse3D:
             return float('inf')
 
         # Check if points are valid
-        if self.mat[x1, y1, z1] not in [0, 4] or self.mat[x2, y2, z2] not in [0, 4]:
+        if self.mat[x1, y1, z1] != 1 or self.mat[x2, y2, z2] != 1:
             print('Point does not correspond to a circulation zone.')
             return float('inf')  # No path possible
 
         # Possible directions for movement (up, down, left, right, up-z, down-z)
         directions = [
-            (0, 1, 0), (0, -1, 0), (1, 0, 0), (-1, 0, 0)
+            (0, 1, 0), (0, -1, 0), (1, 0, 0), (-1, 0, 0), (0, 0, 1), (0, 0, -1),
         ]
 
         # Initialize BFS queue and visited cells list
