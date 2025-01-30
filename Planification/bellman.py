@@ -59,7 +59,7 @@ if __name__ == '__main__':
 
     ## Test de la fonction
 
-    with open('Data_test/M.csv', newline='') as csvfile:
+    with open('../Data_test/M.csv', newline='') as csvfile:
         time_matrix = list(csv.reader(csvfile))
 
     M = []
