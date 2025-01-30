@@ -1,6 +1,5 @@
-from modelisation_3D import Warehouse3D
-import numpy as np
 import logging
+from tqdm import tqdm
 
 #Logs configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -58,8 +57,10 @@ def generate_adjacency_matrix_by_blocks(warehouse_3d, coordinates, block_size=10
     n = len(coordinates)
     adj_matrix = np.zeros((n, n), dtype=float)
 
-    for i in range(0, n, block_size):
+    for i in tqdm(range(0, n, block_size), desc='Generating Manhattan distance for block i'):
         logging.info(f"Adjacency matrice for block number {i} is being generated...")
+
+
         for j in range(i, n, block_size):
             i_end = min(i + block_size, n)
             j_end = min(j + block_size, n)
@@ -98,88 +99,10 @@ def assemble_global_adjacency_matrix(*matrices):
     return global_matrix
 
 
-if __name__ == "__main__":
-
-    #Build warehouse
-    logging.info("Starting warehouse creation...")
-    height = 3
-    warehouse_3d = Warehouse3D(30, 30, height)
-
-    # Add shelves at level 0
-    
-    # shelves
-    logging.info("Adding shelves...")
-    warehouse_3d.add_shelf(height, [2, 2], [2, 28], [5, 2], [5, 28])
-    warehouse_3d.add_shelf(height, [2, 2], [2, 5], [20, 5], [20, 2])
-    warehouse_3d.add_shelf(height, [2, 14], [2, 17], [20, 17], [20, 14])
-    warehouse_3d.add_shelf(height, [2, 25], [2, 28], [20, 28], [20, 25])
-
-    # horizontal storage line
-    logging.info("Adding horizontal storage lines...")
-    warehouse_3d.add_storage_line(height, [4, 5], [4, 13])
-    warehouse_3d.add_storage_line(height, [4, 17], [4, 24])
-    warehouse_3d.add_storage_line(height, [2, 3], [2, 26])
-
-    # vertical storage line
-    logging.info("Adding vertical storage lines...")
-    warehouse_3d.add_storage_line(height, [3, 2], [19, 2])
-    warehouse_3d.add_storage_line(height, [5, 4], [19, 4])
-    warehouse_3d.add_storage_line(height, [5, 14], [19, 14])
-    warehouse_3d.add_storage_line(height, [5, 16], [19, 16])
-    warehouse_3d.add_storage_line(height, [5, 25], [19, 25])
-    warehouse_3d.add_storage_line(height, [3, 27], [19, 27])
-
-
-    # Add objects
-    logging.info("Adding objects...")
-    warehouse_3d.add_object(2, 6, 1)
-    warehouse_3d.add_object(9, 4, 0)
-    warehouse_3d.add_object(4, 20, 2)
-
-    # Add checkpoints
-    logging.info("Adding checkpoints...")
-    warehouse_3d.add_checkpoint(20, 1, 0)
-    warehouse_3d.add_checkpoint(20, 1, 1)
-    warehouse_3d.add_checkpoint(20, 1, 2)
-
-    warehouse_3d.add_checkpoint(20, 9, 0)
-    warehouse_3d.add_checkpoint(20, 9, 1)
-    warehouse_3d.add_checkpoint(20, 9, 2)
-
-    warehouse_3d.add_checkpoint(10, 9, 0)
-    warehouse_3d.add_checkpoint(10, 9, 1)
-    warehouse_3d.add_checkpoint(10, 9, 2)
-
-    warehouse_3d.add_checkpoint(20, 21, 0)
-    warehouse_3d.add_checkpoint(20, 21, 1)
-    warehouse_3d.add_checkpoint(20, 21, 2)
-
-    warehouse_3d.add_checkpoint(10, 21, 0)
-    warehouse_3d.add_checkpoint(10, 21, 1)
-    warehouse_3d.add_checkpoint(10, 21, 2)
-
-    warehouse_3d.add_checkpoint(20, 28, 0)
-    warehouse_3d.add_checkpoint(20, 28, 1)
-    warehouse_3d.add_checkpoint(20, 28, 2)
-
-    warehouse_3d.add_checkpoint(1, 1, 0)
-    warehouse_3d.add_checkpoint(1, 1, 1)
-    warehouse_3d.add_checkpoint(1, 1, 2)
-
-    warehouse_3d.add_checkpoint(1, 28, 0)
-    warehouse_3d.add_checkpoint(1, 28, 1)
-    warehouse_3d.add_checkpoint(1, 28, 2)
-
-    category_mapping = {
-        0: 'empty',
-        1: 'shelf',
-        2: 'storage_line',
-        3: 'object',
-        4: 'checkpoint',
-    }
-
+def main_adjacency(warehouse_3d, category_mapping):
     warehouse_mat = warehouse_3d.mat
-    values_to_extract = list(category_mapping.keys()).pop(1) # [0, 2, 3, 4]
+
+    values_to_extract = list(category_mapping.keys())  # [0, 2, 3, 4]
     full_coordinates_dict = extract_coordinates(warehouse_mat, values_to_extract)
 
     named_coordinates_dict = {
@@ -187,35 +110,55 @@ if __name__ == "__main__":
         for value, coords in full_coordinates_dict.items()
     }
 
-    #Creation of one ajacency matrix per category
+    # Creation of one ajacency matrix per category
     logging.info("Generating adjacency matrices...")
     adj_matrices = {}
+
     for name, coordinates in named_coordinates_dict.items():
 
         if name == 'empty':
-            #Adjacency matrices for empty is made of zeros, it cannot be reach by a drone.
+            # Adjacency matrices for empty is made of zeros, it cannot be reach by a drone.
             logging.info(f"Generating the adjacency matrice for category {name} ...")
             n = len(coordinates)
             adj_matrices[name] = np.zeros((n, n), dtype=float)
             logging.info(f"Adjacency matrice for category {name} generated.")
 
         else:
-            #Display coordinates of every points for each category
-            print(f"Coordonnées pour {name} : {coordinates}", len(coordinates))
+            # Display coordinates of every points for each category
+            # print(f"Coordonnées pour {name} : {coordinates}", len(coordinates))
 
             logging.info(f"Generating the adjacency matrice for category {name} ...")
 
-            #adj_matrix_name = generate_adjacency_matrix(warehouse_3d, coordinates)
+            # adj_matrix_name = generate_adjacency_matrix(warehouse_3d, coordinates)
 
             adj_matrices[name] = generate_adjacency_matrix_by_blocks(
-            warehouse_3d, coordinates, block_size=25
+                warehouse_3d, coordinates, block_size=25
             )
             logging.info(f"Adjacency matrice for category {name} generated.")
 
     adjacency_matrix = assemble_global_adjacency_matrix(
         adj_matrices['empty'],
-        adj_matrices['shelf'],
         adj_matrices['storage_line'],
         adj_matrices['object'],
         adj_matrices['checkpoint']
     )
+
+    return adjacency_matrix
+
+
+import os
+import numpy as np
+
+
+def save(adjacency_matrix : np.ndarray, warehouse_name : str):
+
+    file_name = f'AM_{warehouse_name}.csv'
+    file_path = os.path.join("Planification\\AMatrix", file_name)
+
+    # Vérifier si le dossier "AMatrix" existe, sinon le créer
+    if not os.path.exists("Planification\\AMatrix"):
+        os.makedirs("Planification\\AMatrix")
+
+    # Enregistrer la matrice dans un fichier CSV
+    np.savetxt(file_path, adjacency_matrix, delimiter=",")
+    print(f"Adjacency matrix saved to {file_path}")
