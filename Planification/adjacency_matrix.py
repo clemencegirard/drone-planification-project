@@ -1,5 +1,7 @@
 import logging
 from tqdm import tqdm
+import os
+import numpy as np
 
 #Logs configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -144,10 +146,6 @@ def main_adjacency(warehouse_3d, category_mapping):
     )
 
     return adjacency_matrix
-
-
-import os
-import numpy as np
 
 
 def save(adjacency_matrix : np.ndarray, warehouse_name : str):
