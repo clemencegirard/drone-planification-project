@@ -9,7 +9,6 @@ from warehouse_builder import load_config,build_warehouse
 # Charger la configuration
 warehouses_config, category_mapping = load_config()
 
-
 # Sélectionner un entrepôt
 warehouse_name = "warehouse2"
 

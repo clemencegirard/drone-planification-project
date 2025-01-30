@@ -35,7 +35,7 @@ class Warehouse3D:
                         elif self.mat[x, y, h] == 4:
                             ax.add_patch(plt.Circle((y, x), 0.4, color="blue", ec="black"))
 
-                ax.set_title(f"Level {h + 1}")
+                ax.set_title(f"Level {h}")
                 ax.grid(which="both", color="black", linewidth=0.4)
                 ax.set_xticks(range(self.cols))
                 ax.set_yticks(range(self.rows))
@@ -97,8 +97,6 @@ class Warehouse3D:
         x2, y2 = c2
         is_storage = False
 
-        self.display(display=True)
-
         if x1 == x2:  # Horizontal line
             #check if shelf is settled
             for h in range(height + 1):  # Fill all levels up to the specified height
@@ -135,8 +133,6 @@ class Warehouse3D:
             logging.warning("Not a storage line")
             raise WarehouseError("Not a storage line")  # Levée de l'exception
             return
-
-        self.display(display=True)
 
     def add_object(self, rows: int, col: int, level: int):
 
