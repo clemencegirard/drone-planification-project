@@ -1,7 +1,7 @@
 import logging
 from tqdm import tqdm
-import os
 import numpy as np
+from pathlib import Path
 
 #Logs configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -78,28 +78,56 @@ def generate_adjacency_matrix_by_blocks(warehouse_3d, coordinates, block_size=10
 
     return adj_matrix
 
-def assemble_global_adjacency_matrix(*matrices):
+def update_with_inter_category_distances(named_coordinates_dict, warehouse_3d, global_matrix, category_positions, category1, category2):
+    """_summary_
+
+    Args:
+        category1 (_type_): _description_
+        category2 (_type_): _description_
+    """    
+    start1, _ = category_positions[category1]
+    start2, _ = category_positions[category2]
+    
+    coords1 = named_coordinates_dict[category1]
+    coords2 = named_coordinates_dict[category2]
+
+    for i, coord1 in enumerate(coords1):
+        for j, coord2 in enumerate(coords2):
+            dist = warehouse_3d.compute_manhattan_distance(coord1, coord2)
+            global_matrix[start1 + i, start2 + j] = dist
+            global_matrix[start2 + j, start1 + i] = dist
+
+
+def assemble_global_adjacency_matrix(named_coordinates_dict, warehouse_3d, adj_matrices):
     """
     Assemble a global adjacency matrix from individual adjacency matrices provided as arguments.
     Parameters:
-        matrices (list of np.ndarray): The adjacency matrices to be combined into a block-diagonal global matrix.
+        named_coordinates_dict (dict): Coordinates for each category.
+        warehouse_3d: Warehouse object.
+        adj_matrices (list of np.ndarray): Individual adjacency matrices.
 
     Returns:
-        np.ndarray: The global adjacency matrix combining all individual matrices as block matrices.
+        np.ndarray: Global adjacency matrix combining all individual matrices as block matrices.
     """
-    total_size = sum(matrix.shape[0] for matrix in matrices)
+
+    total_size = sum(matrix.shape[0] for matrix in adj_matrices.values())
     global_matrix = np.zeros((total_size, total_size), dtype=float)
 
     current_position = 0
+    category_positions = {}  # Initialise comme un dictionnaire
 
-    for matrix in matrices:
-        size = matrix.shape[0]  # Size of the current matrix
+    # Placer chaque matrice dans la matrice globale
+    for category, adj_matrix in adj_matrices.items():
+        size = adj_matrix.shape[0]
         global_matrix[current_position:current_position + size,
-                      current_position:current_position + size] = matrix
+                      current_position:current_position + size] = adj_matrix
+        category_positions[category] = (current_position, current_position + size)
         current_position += size
+    
+    update_with_inter_category_distances(named_coordinates_dict, warehouse_3d, global_matrix, category_positions, 'object', 'checkpoint')
+    update_with_inter_category_distances(named_coordinates_dict, warehouse_3d, global_matrix, category_positions, 'storage_line', 'checkpoint')
 
     return global_matrix
-
 
 def main_adjacency(warehouse_3d, category_mapping):
     warehouse_mat = warehouse_3d.mat
@@ -127,36 +155,32 @@ def main_adjacency(warehouse_3d, category_mapping):
 
         else:
             # Display coordinates of every points for each category
-            # print(f"Coordonnées pour {name} : {coordinates}", len(coordinates))
+            print(f"Coordonnées pour {name} : {coordinates}", len(coordinates))
 
             logging.info(f"Generating the adjacency matrice for category {name} ...")
-
-            # adj_matrix_name = generate_adjacency_matrix(warehouse_3d, coordinates)
 
             adj_matrices[name] = generate_adjacency_matrix_by_blocks(
                 warehouse_3d, coordinates, block_size=25
             )
             logging.info(f"Adjacency matrice for category {name} generated.")
 
-    adjacency_matrix = assemble_global_adjacency_matrix(
-        adj_matrices['empty'],
-        adj_matrices['storage_line'],
-        adj_matrices['object'],
-        adj_matrices['checkpoint']
-    )
+    adjacency_matrix = assemble_global_adjacency_matrix(named_coordinates_dict, warehouse_3d, adj_matrices)
 
     return adjacency_matrix
 
 
 def save(adjacency_matrix : np.ndarray, warehouse_name : str):
 
+    current_path = Path(__file__).parent.resolve()
+
+    amatrix_dir = current_path / "AMatrix"
+
+    #Creates the AMatrix file if it doesn't exists already
+    amatrix_dir.mkdir(parents=True, exist_ok=True)
+
     file_name = f'AM_{warehouse_name}.csv'
-    file_path = os.path.join("Planification\\AMatrix", file_name)
+    file_path = amatrix_dir / file_name
 
-    # Vérifier si le dossier "AMatrix" existe, sinon le créer
-    if not os.path.exists("Planification\\AMatrix"):
-        os.makedirs("Planification\\AMatrix")
-
-    # Enregistrer la matrice dans un fichier CSV
+    # Save the  matrix in a csv file
     np.savetxt(file_path, adjacency_matrix, delimiter=",")
     print(f"Adjacency matrix saved to {file_path}")
