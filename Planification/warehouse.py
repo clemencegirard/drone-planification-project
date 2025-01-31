@@ -6,7 +6,7 @@ import logging
 # Logs configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Exception personnalisée pour arrêter le programme en cas d'erreur dans le warehouse
+# Personnalised exception to stop the code when error in the warehouse
 class WarehouseError(Exception):
     pass
 
@@ -62,7 +62,7 @@ class Warehouse3D:
     def add_shelf(self, height: int, top_left: tuple, top_right: tuple, bottom_left: tuple, bottom_right: tuple):
         if not (0 <= height < self.height):
             logging.warning(f"Level {height} out of bounds")
-            raise WarehouseError(f"Level {height} out of bounds")  # Levée de l'exception
+            raise WarehouseError(f"Level {height} out of bounds")  # Raise error
             return
 
         # Check if rectangle dimensions are valid
@@ -70,14 +70,14 @@ class Warehouse3D:
             width = abs(top_left[1] - top_right[1])
         else:
             logging.warning("Not a rectangle")
-            raise WarehouseError("Not a rectangle")  # Levée de l'exception
+            raise WarehouseError("Not a rectangle")  # Raise error
             return
 
         if abs(top_left[0] - bottom_left[0]) == abs(top_right[0] - bottom_right[0]):
             height_rect = abs(top_left[0] - bottom_left[0])
         else:
             logging.warning("Not a rectangle")
-            raise WarehouseError("Not a rectangle")  # Levée de l'exception
+            raise WarehouseError("Not a rectangle")  # Raise error
             return
 
         # Fill in the lower levels
@@ -90,7 +90,7 @@ class Warehouse3D:
     def add_storage_line(self, height: int, c1: tuple, c2: tuple):
         if not (0 <= height < self.height):  # Check bounds
             logging.warning(f"Level {height} out of bounds")
-            raise WarehouseError(f"Level {height} out of bounds")  # Levée de l'exception
+            raise WarehouseError(f"Level {height} out of bounds")  # Raise error
             return
 
         x1, y1 = c1
@@ -105,7 +105,7 @@ class Warehouse3D:
                         is_storage = True
                     else:
                         logging.warning("The specified line is out of storage")
-                        raise WarehouseError("The specified line is out of storage")  # Levée de l'exception
+                        raise WarehouseError("The specified line is out of storage")  # Raise error
                         return
             #fill it
             if is_storage:
@@ -121,7 +121,7 @@ class Warehouse3D:
                         is_storage = True
                     else:
                         logging.warning("The specified line is out of storage")
-                        raise WarehouseError("The specified line is out of storage")  # Levée de l'exception
+                        raise WarehouseError("The specified line is out of storage")  # Raise error
                         return
             # fill it
             if is_storage:
@@ -131,7 +131,7 @@ class Warehouse3D:
 
         else:
             logging.warning("Not a storage line")
-            raise WarehouseError("Not a storage line")  # Levée de l'exception
+            raise WarehouseError("Not a storage line")  # Raise error
             return
 
     def add_object(self, rows: int, col: int, level: int):
@@ -140,14 +140,14 @@ class Warehouse3D:
             self.mat[rows, col, level] = 3
         else:
             logging.warning("There is no shelf here")
-            raise WarehouseError("There is no shelf here")  # Levée de l'exception
+            raise WarehouseError("There is no shelf here")  # Raise error
 
     def add_checkpoint(self, rows: int, col: int, level: int):
         if self.mat[rows, col, level] == 0:
             self.mat[rows, col, level] = 4
         else:
             logging.warning("There is an obstacle here")
-            raise WarehouseError("There is an obstacle here")  # Levée de l'exception
+            raise WarehouseError("There is an obstacle here")  # Raise error
 
     def compute_manhattan_distance(self, c1: tuple, c2: tuple) -> int:
         x1, y1, z1 = c1
@@ -155,18 +155,18 @@ class Warehouse3D:
 
         if not (0 <= x1 < self.rows and 0 <= y1 < self.cols and 0 <= z1 < self.height):
             logging.warning("Start point is out of warehouse bounds.")
-            raise WarehouseError("Start point is out of warehouse bounds.")  # Levée de l'exception
+            raise WarehouseError("Start point is out of warehouse bounds.")  # Raise error
             return float('inf')
 
         if not (0 <= x2 < self.rows and 0 <= y2 < self.cols and 0 <= z2 < self.height):
             logging.warning("End point is out of warehouse bounds.")
-            raise WarehouseError("End point is out of warehouse bounds.")  # Levée de l'exception
+            raise WarehouseError("End point is out of warehouse bounds.")  # Raise error
             return float('inf')
 
         # Check if points are valid
         if self.mat[x1, y1, z1] == 1 or self.mat[x2, y2, z2] == 1:
             logging.warning('Point does not correspond to a circulation zone.')
-            raise WarehouseError('Point does not correspond to a circulation zone.')  # Levée de l'exception
+            raise WarehouseError('Point does not correspond to a circulation zone.')  # Raise error
             return float('inf')  # No path possible
 
         # Possible directions for movement (up, down, left, right, up-z, down-z)
@@ -191,4 +191,14 @@ class Warehouse3D:
             # Explore neighbors
             for dx, dy, dz in directions:
                 nx, ny, nz = x + dx, y + dy, z + dz
+
+                # Check if neighbor is within bounds, not visited, and free
+                if (0 <= nx < self.rows and 0 <= ny < self.cols and 0 <= nz < self.height and
+                        not visited[nx, ny, nz] and self.mat[nx, ny, nz] in [0, 4]):
+                    visited[nx, ny, nz] = True  # Mark as visited
+                    queue.append((nx, ny, nz, dist + 1))  # Add neighbor to queue
+
+        # If we exit the loop without finding the end point, no path is possible
+        return float('inf')
+
 
