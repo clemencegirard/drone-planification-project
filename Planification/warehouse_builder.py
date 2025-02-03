@@ -15,7 +15,6 @@ def load_config(config_path="config_warehouses.json"):
 
     return warehouses_config, category_mapping
 
-
 def build_warehouse(warehouse_name, warehouses_config):
     """Construit un entrepôt à partir du nom et de la configuration."""
     warehouse_data = warehouses_config.get(warehouse_name)
@@ -28,7 +27,7 @@ def build_warehouse(warehouse_name, warehouses_config):
 
     # Warehouse creation
     dimensions = warehouse_data["dimensions"]
-    warehouse_3d = Warehouse3D(*dimensions)
+    warehouse_3d = Warehouse3D(warehouse_name, *dimensions)
 
     # Adding shelves
     logging.info("Adding shelves...")
