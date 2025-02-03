@@ -54,5 +54,16 @@ def build_warehouse(warehouse_name, warehouses_config):
         for level in range(dimensions[2]):  # Adding one checkpoint at every level
             warehouse_3d.add_checkpoint(*checkpoint, level)
 
+    # Adding start mat
+    logging.info("Adding start mat...")
+    for start_mat in warehouse_data["start_mat"]:
+        warehouse_3d.add_start_mat(*start_mat)
+
+    # Adding start mat
+    logging.info("Adding finish mat...")
+    for finish_mat in warehouse_data["finish_mat"]:
+        warehouse_3d.add_finish_mat(*finish_mat)
+
+
     return warehouse_3d
 

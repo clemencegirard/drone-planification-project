@@ -49,7 +49,15 @@
       "objects": [
         [1, 1, 0]
       ],
-      "checkpoints": [[0, 0], [0, 3], [3, 0], [3, 3]]
+      "start_mat": [
+        [1, 0, 0]
+      ],
+      "finish_mat": [
+        [2, 3, 0]
+      ],
+      "checkpoints": [
+        [0, 0], [0, 3], [3, 0], [3, 3]
+      ]
     },
 
     "one_level_U_warehouse": {

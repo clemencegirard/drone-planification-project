@@ -34,6 +34,10 @@ class Warehouse3D:
                             ax.add_patch(plt.Circle((y, x), 0.4, color="red", ec="black"))
                         elif self.mat[x, y, h] == 4:
                             ax.add_patch(plt.Circle((y, x), 0.4, color="blue", ec="black"))
+                        elif self.mat[x, y, h] == 5:
+                            ax.add_patch(plt.Circle((y, x), 0.4, color="yellow", ec="black"))
+                        elif self.mat[x, y, h] == 6:
+                            ax.add_patch(plt.Circle((y, x), 0.4, color="green", ec="black"))
 
                 ax.set_title(f"Level {h}")
                 ax.grid(which="both", color="black", linewidth=0.4)
@@ -46,9 +50,11 @@ class Warehouse3D:
                 "Shelf",
                 "Object Location",
                 "Object Presence",
-                "Passage Point"
+                "Passage Point",
+                "Start Mat",
+                "Finish Mat"
             ]
-            colors = ["white", "gray", "orange", "red", "blue"]
+            colors = ["white", "gray", "orange", "red", "blue","yellow","green"]
 
             # Create legend handles
             handles = [plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=c, markersize=10) for c in colors]
@@ -141,6 +147,23 @@ class Warehouse3D:
         else:
             logging.warning("There is no shelf here")
             raise WarehouseError("There is no shelf here")  # Raise error
+
+    def add_start_mat(self, rows: int, col: int, level: int):
+
+        if self.mat[rows, col, level] == 0:
+            self.mat[rows, col, level] = 5
+        else:
+            logging.warning("There is no free space here for start mat")
+            raise WarehouseError("There is no free space here for start mate")  # Raise error
+
+    def add_finish_mat(self, rows: int, col: int, level: int):
+
+        if self.mat[rows, col, level] == 0:
+            self.mat[rows, col, level] = 6
+        else:
+            logging.warning("There is no free space here for finish mat")
+            raise WarehouseError("There is no free space here for finish mate")  # Raise error
+
 
     def add_checkpoint(self, rows: int, col: int, level: int):
         if self.mat[rows, col, level] == 0:
