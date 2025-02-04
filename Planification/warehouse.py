@@ -217,7 +217,7 @@ class Warehouse3D:
 
                 # Check if neighbor is within bounds, not visited, and free
                 if (0 <= nx < self.rows and 0 <= ny < self.cols and 0 <= nz < self.height and
-                        not visited[nx, ny, nz] and self.mat[nx, ny, nz] in [0, 4]):
+                        not visited[nx, ny, nz] and self.mat[nx, ny, nz] != 1):
                     visited[nx, ny, nz] = True  # Mark as visited
                     queue.append((nx, ny, nz, dist + 1))  # Add neighbor to queue
 

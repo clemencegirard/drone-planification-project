@@ -126,6 +126,9 @@ def assemble_global_adjacency_matrix(named_coordinates_dict, warehouse_3d, adj_m
     
     update_with_inter_category_distances(named_coordinates_dict, warehouse_3d, global_matrix, category_positions, 'object', 'checkpoint')
     update_with_inter_category_distances(named_coordinates_dict, warehouse_3d, global_matrix, category_positions, 'storage_line', 'checkpoint')
+    update_with_inter_category_distances(named_coordinates_dict, warehouse_3d, global_matrix, category_positions, 'start_mat', 'finish_mat')
+    update_with_inter_category_distances(named_coordinates_dict, warehouse_3d, global_matrix, category_positions, 'start_mat', 'checkpoint')
+    update_with_inter_category_distances(named_coordinates_dict, warehouse_3d, global_matrix, category_positions, 'finish_mat', 'checkpoint')
 
     return global_matrix
 
