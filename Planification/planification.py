@@ -24,7 +24,7 @@ def planification(csv_file_name):
 
     csv_file = open_csv(csv_file_name)  # Ouvre le fichier CSV
 
-    for row in csv_file:
+    # for row in csv_file:
 
 
     return csv_file, df  # Retourne le CSV et le DataFrame avec les heures en index

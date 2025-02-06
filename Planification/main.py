@@ -10,7 +10,7 @@ from bellman import main_bellman
 warehouses_config, category_mapping = load_config()
 
 # Sélectionner un entrepôt
-warehouse_name = "one_level_F_warehouse"
+warehouse_name = "three_level_line_warehouse"
 
 # Build warehouse
 warehouse_3d = build_warehouse(warehouse_name, warehouses_config)
