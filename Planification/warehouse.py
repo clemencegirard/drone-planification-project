@@ -12,7 +12,10 @@ class WarehouseError(Exception):
     pass
 
 class Warehouse3D:
-    def __init__(self, rows: int, cols: int, height: int, mat_capacity :int):
+<<<<<<< Planification/warehouse.py
+    def __init__(self, name: str, rows: int, cols: int, height: int, mat_capacity :int):
+
+        self.name = name
         self.rows = rows
         self.cols = cols
         self.height = height
@@ -94,7 +97,6 @@ class Warehouse3D:
             for i in range(height_rect+1):
                 for j in range(width+1):
                     self.mat[i + top_left[0], j + top_left[1], h] = 1
-
 
     def add_storage_line(self, height: int, c1: tuple, c2: tuple):
         if not (0 <= height < self.height):  # Check bounds
@@ -264,11 +266,22 @@ class Warehouse3D:
 
                 # Check if neighbor is within bounds, not visited, and free
                 if (0 <= nx < self.rows and 0 <= ny < self.cols and 0 <= nz < self.height and
-                        not visited[nx, ny, nz] and self.mat[nx, ny, nz] in [0, 4]):
+                        not visited[nx, ny, nz] and self.mat[nx, ny, nz] != 1):
                     visited[nx, ny, nz] = True  # Mark as visited
                     queue.append((nx, ny, nz, dist + 1))  # Add neighbor to queue
 
         # If we exit the loop without finding the end point, no path is possible
         return float('inf')
 
+class Object:
+    def __init__(self, id: str, is_on_shelf: bool, row: int, col: int, height: int):
+        self.id = id
+        self.is_on_shelf = is_on_shelf
+        self.row = row
+        self.col = col
+        self.height = height
 
+    def move_to(self, row: int, col: int, height: int):
+        self.row = row
+        self.col = col
+        self.height = height

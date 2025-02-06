@@ -49,12 +49,15 @@
       "objects": [
         [1, 1, 0]
       ],
+
       "start_mat": [
         [1, 0, 0]
       ],
+
       "finish_mat": [
         [2, 3, 0]
       ],
+
       "checkpoints": [
         [0, 0], [0, 3], [3, 0], [3, 3]
       ]
@@ -108,6 +111,8 @@
     "0": "empty",
     "2": "storage_line",
     "3": "object",
-    "4": "checkpoint"
+    "4": "checkpoint",
+    "5": "start_mat",
+    "6": "finish_mat"
   }
 }
