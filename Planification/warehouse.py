@@ -13,6 +13,7 @@ class WarehouseError(Exception):
     pass
 
 class Warehouse3D:
+
     def __init__(self, name: str, rows: int, cols: int, height: int, mat_capacity :int):
 
         self.name = name
