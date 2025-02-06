@@ -12,7 +12,7 @@ class WarehouseError(Exception):
     pass
 
 class Warehouse3D:
-<<<<<<< Planification/warehouse.py
+
     def __init__(self, name: str, rows: int, cols: int, height: int, mat_capacity :int):
 
         self.name = name
