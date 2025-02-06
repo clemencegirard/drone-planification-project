@@ -17,6 +17,7 @@ class Warehouse3D:
         self.cols = cols
         self.height = height
         self.mat = np.zeros((self.rows, self.cols, self.height))
+        self.checkpoints_graph = {}
 
     def display(self, display=False):
         if display:
@@ -164,13 +165,26 @@ class Warehouse3D:
             logging.warning("There is no free space here for finish mat")
             raise WarehouseError("There is no free space here for finish mate")  # Raise error
 
-
-    def add_checkpoint(self, rows: int, col: int, level: int):
-        if self.mat[rows, col, level] == 0:
-            self.mat[rows, col, level] = 4
+    def add_checkpoint(self, info : tuple):
+        row,col,level = info[0]
+        checkpoint_id = info[1]
+        if self.mat[row, col, level] == 0:
+            self.mat[row, col, level] = 4
+            self.checkpoints_graph[checkpoint_id] = set()  # Initialise les connexions vides
         else:
-            logging.warning("There is an obstacle here")
-            raise WarehouseError("There is an obstacle here")  # Raise error
+            logging.warning("Il y a un obstacle ici")
+            raise WarehouseError("Il y a un obstacle ici")
+
+    def connect_checkpoints(self, couple : tuple):
+        cp1,cp2 = couple
+        if cp1 in self.checkpoints_graph and cp2 in self.checkpoints_graph:
+            self.checkpoints_graph[cp1].add(cp2)  # Connexion dirigée
+        else:
+            logging.warning("Checkpoint invalide")
+            raise WarehouseError("Checkpoint invalide")
+
+    def can_move_between_checkpoints(self, cp1: int, cp2: int) -> bool:
+        return cp2 in self.checkpoints_graph.get(cp1, set())
 
     def compute_manhattan_distance(self, c1: tuple, c2: tuple) -> int:
         x1, y1, z1 = c1
