@@ -51,8 +51,12 @@ def build_warehouse(warehouse_name, warehouses_config):
     # Adding checkpoints
     logging.info("Adding checkpoints...")
     for checkpoint in warehouse_data["checkpoints"]:
-        for level in range(dimensions[2]):  # Adding one checkpoint at every level
-            warehouse_3d.add_checkpoint(*checkpoint, level)
+        warehouse_3d.add_checkpoint(checkpoint)
+
+    # Connect checkpoints
+    logging.info("Connecting checkpoints...")
+    for connection in warehouse_data["checkpoint_connection"]:
+        warehouse_3d.connect_checkpoints(connection)
 
     # Adding start mat
     logging.info("Adding start mat...")
@@ -63,7 +67,6 @@ def build_warehouse(warehouse_name, warehouses_config):
     logging.info("Adding finish mat...")
     for finish_mat in warehouse_data["finish_mat"]:
         warehouse_3d.add_finish_mat(*finish_mat)
-
 
     return warehouse_3d
 
