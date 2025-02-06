@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import deque
 import logging
+import networkx as nx
 
 # Logs configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -185,6 +186,38 @@ class Warehouse3D:
 
     def can_move_between_checkpoints(self, cp1: int, cp2: int) -> bool:
         return cp2 in self.checkpoints_graph.get(cp1, set())
+
+    def show_graph(self, show=False):
+
+        if show:
+            # Créer un graphe orienté
+            G = nx.DiGraph()
+
+            # Ajouter les nœuds
+            num_nodes = len(self.checkpoints_graph)
+
+            for key, values in self.checkpoints_graph.items():
+                G.add_node(key)
+                for value in values:
+                    G.add_edge(key, value)
+
+            # Position des nœuds pour visualiser le graphe (arrangés en cercle)
+            pos = nx.spring_layout(G)  # 'spring_layout' donne une disposition agréable
+
+            # Dessiner le graphe
+            plt.figure(figsize=(10, 8))
+            nx.draw(G, pos, with_labels=True, node_size=700, node_color="lightblue", font_size=10, font_weight="bold",
+                    arrows=True)
+
+            # Ajouter les étiquettes des poids
+            labels = nx.get_edge_attributes(G, 'weight')
+            nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
+
+            plt.title("Graphe des temps entre points")
+
+            return plt.show()
+
+
 
     def compute_manhattan_distance(self, c1: tuple, c2: tuple) -> int:
         x1, y1, z1 = c1
