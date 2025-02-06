@@ -82,7 +82,15 @@
       "objects": [
         [1, 2, 0]
       ],
-      "checkpoints": [[0, 0], [0, 5], [5, 0], [5, 5]]
+      "checkpoints": [[0, 0], [0, 5], [5, 0], [5, 5]],
+
+      "start_mat": [
+        [3, 5, 0]
+      ],
+
+      "finish_mat": [
+        [2, 5, 0]
+      ]
     },
 
     "one_level_F_warehouse": {
