@@ -54,6 +54,12 @@ def minimum_distance_matrix(M):
     return C
 
 
+def main_bellman(M):
+
+    M = inf_mat(M)
+
+    return minimum_distance_matrix(M)
+
 if __name__ == '__main__':
 
 
@@ -70,7 +76,6 @@ if __name__ == '__main__':
             ligne.append(int(time_matrix[i][j]))
         M.append(ligne)
 
-    M = inf_mat(M)
-    response = minimum_distance_matrix(M)
 
-    print(response)
+
+    print(main_bellman(M))

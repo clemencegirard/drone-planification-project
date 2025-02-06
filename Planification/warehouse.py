@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from collections import deque
 import logging
 from pathlib import Path
+import networkx as nx
 
 # Logs configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -12,12 +13,15 @@ class WarehouseError(Exception):
     pass
 
 class Warehouse3D:
-    def __init__(self, name: str, rows: int, cols: int, height: int):
+    def __init__(self, name: str, rows: int, cols: int, height: int, mat_capacity :int):
+
         self.name = name
         self.rows = rows
         self.cols = cols
         self.height = height
+        self.mat_capacity = mat_capacity
         self.mat = np.zeros((self.rows, self.cols, self.height))
+        self.checkpoints_graph = {}
 
     def save_warehouse_plot(self, fig):
         current_path = Path(__file__).parent.resolve()
@@ -176,13 +180,57 @@ class Warehouse3D:
             logging.warning("There is no free space here for finish mat")
             raise WarehouseError("There is no free space here for finish mate")  # Raise error
 
-
-    def add_checkpoint(self, rows: int, col: int, level: int):
-        if self.mat[rows, col, level] == 0:
-            self.mat[rows, col, level] = 4
+    def add_checkpoint(self, info : tuple):
+        row,col,level = info[0]
+        checkpoint_id = info[1]
+        if self.mat[row, col, level] == 0:
+            self.mat[row, col, level] = 4
+            self.checkpoints_graph[checkpoint_id] = set()  # Initialise les connexions vides
         else:
-            logging.warning("There is an obstacle here")
-            raise WarehouseError("There is an obstacle here")  # Raise error
+            logging.warning("Il y a un obstacle ici")
+            raise WarehouseError("Il y a un obstacle ici")
+
+    def connect_checkpoints(self, couple : tuple):
+        cp1,cp2 = couple
+        if cp1 in self.checkpoints_graph and cp2 in self.checkpoints_graph:
+            self.checkpoints_graph[cp1].add(cp2)  # Connexion dirigée
+        else:
+            logging.warning("Checkpoint invalide")
+            raise WarehouseError("Checkpoint invalide")
+
+    def can_move_between_checkpoints(self, cp1: int, cp2: int) -> bool:
+        return cp2 in self.checkpoints_graph.get(cp1, set())
+
+    def show_graph(self, show=False):
+
+        if show:
+            # Créer un graphe orienté
+            G = nx.DiGraph()
+
+            # Ajouter les nœuds
+            num_nodes = len(self.checkpoints_graph)
+
+            for key, values in self.checkpoints_graph.items():
+                G.add_node(key)
+                for value in values:
+                    G.add_edge(key, value)
+
+            # Position des nœuds pour visualiser le graphe (arrangés en cercle)
+            pos = nx.spring_layout(G)  # 'spring_layout' donne une disposition agréable
+
+            # Dessiner le graphe
+            plt.figure(figsize=(10, 8))
+            nx.draw(G, pos, with_labels=True, node_size=700, node_color="lightblue", font_size=10, font_weight="bold",
+                    arrows=True)
+
+            # Ajouter les étiquettes des poids
+            labels = nx.get_edge_attributes(G, 'weight')
+            nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
+
+            plt.title("Graphe des temps entre points")
+
+            return plt.show()
+
 
     def compute_manhattan_distance(self, c1: tuple, c2: tuple) -> int:
         x1, y1, z1 = c1
