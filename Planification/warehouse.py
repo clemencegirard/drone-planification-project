@@ -12,10 +12,11 @@ class WarehouseError(Exception):
     pass
 
 class Warehouse3D:
-    def __init__(self, rows: int, cols: int, height: int):
+    def __init__(self, rows: int, cols: int, height: int, mat_capacity :int):
         self.rows = rows
         self.cols = cols
         self.height = height
+        self.mat_capacity = mat_capacity
         self.mat = np.zeros((self.rows, self.cols, self.height))
         self.checkpoints_graph = {}
 
@@ -216,7 +217,6 @@ class Warehouse3D:
             plt.title("Graphe des temps entre points")
 
             return plt.show()
-
 
 
     def compute_manhattan_distance(self, c1: tuple, c2: tuple) -> int:
