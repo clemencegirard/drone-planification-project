@@ -56,6 +56,8 @@ class Warehouse3D:
                             ax.add_patch(plt.Circle((y, x), 0.4, color="yellow", ec="black"))
                         elif self.mat[x, y, h] == 6:
                             ax.add_patch(plt.Circle((y, x), 0.4, color="green", ec="black"))
+                        elif self.mat[x, y, h] == 7:
+                            ax.add_patch(plt.Circle((y, x), 0.4, color="brown", ec="black"))
 
                 ax.set_title(f"Level {h}")
                 ax.grid(which="both", color="black", linewidth=0.4)
@@ -70,9 +72,10 @@ class Warehouse3D:
                 "Object Presence",
                 "Passage Point",
                 "Start Mat",
-                "Finish Mat"
+                "Finish Mat",
+                "Charging station"
             ]
-            colors = ["white", "gray", "orange", "red", "blue","yellow","green"]
+            colors = ["white", "gray", "orange", "red", "blue","yellow","green","brown"]
 
             # Create legend handles
             handles = [plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=c, markersize=10) for c in colors]
@@ -158,7 +161,6 @@ class Warehouse3D:
             return
 
     def add_object(self, rows: int, col: int, level: int):
-
         if self.mat[rows, col, level] == 2:
             self.mat[rows, col, level] = 3
         else:
@@ -166,7 +168,6 @@ class Warehouse3D:
             raise WarehouseError("There is no shelf here")  # Raise error
 
     def add_start_mat(self, rows: int, col: int, level: int):
-
         if self.mat[rows, col, level] == 0:
             self.mat[rows, col, level] = 5
         else:
@@ -174,12 +175,18 @@ class Warehouse3D:
             raise WarehouseError("There is no free space here for start mate")  # Raise error
 
     def add_finish_mat(self, rows: int, col: int, level: int):
-
         if self.mat[rows, col, level] == 0:
             self.mat[rows, col, level] = 6
         else:
             logging.warning("There is no free space here for finish mat")
             raise WarehouseError("There is no free space here for finish mate")  # Raise error
+
+    def add_charging_station(self, rows: int, col: int, level: int):
+        if self.mat[rows, col, level] == 0:
+            self.mat[rows, col, level] = 7
+        else:
+            logging.warning("There is no free space here for charging station")
+            raise WarehouseError("There is no free space here for charging station")  # Raise error
 
     def add_checkpoint(self, info : tuple):
         row,col,level = info[0]
@@ -194,7 +201,8 @@ class Warehouse3D:
     def connect_checkpoints(self, couple : tuple):
         cp1,cp2 = couple
         if cp1 in self.checkpoints_graph and cp2 in self.checkpoints_graph:
-            self.checkpoints_graph[cp1].add(cp2)  # Connexion dirigée
+            self.checkpoints_graph[cp1].add(cp2)
+            self.checkpoints_graph[cp2].add(cp1)
         else:
             logging.warning("Checkpoint invalide")
             raise WarehouseError("Checkpoint invalide")
@@ -274,6 +282,7 @@ class Warehouse3D:
 
             # Explore neighbors
             for dx, dy, dz in directions:
+
                 nx, ny, nz = x + dx, y + dy, z + dz
 
                 # Check if neighbor is within bounds, not visited, and free
