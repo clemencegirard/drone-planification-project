@@ -16,20 +16,17 @@ warehouse_name = "three_level_line_warehouse"
 warehouse_3d = build_warehouse(warehouse_name, warehouses_config)
 
 #False by default. If True, will display the warehouse in a plot
-warehouse_3d.display(True)
-
-warehouse_3d.show_graph(True)
-
-print(warehouse_3d.checkpoints_graph)
+warehouse_3d.display()
+warehouse_3d.show_graph()
 
 #Generates the adjacency matrix
-final_adjacency_matrix = main_adjacency(warehouse_3d, category_mapping)
+final_adjacency_matrix, coordinate_to_index = main_adjacency(warehouse_3d, category_mapping)
+
+print(final_adjacency_matrix)
+print("Dictionnary to map a point coordinates and its position in the adjacency matrix :", coordinate_to_index)
 
 #Save the adjacency matrix generated for the warehouse in the folder AMatrix as a csv file
 save_adj_matrix(final_adjacency_matrix, warehouse_name)
-
-
-print(final_adjacency_matrix)
 
 print("\n(")
 #Call Bellman algorithm

@@ -47,7 +47,7 @@ def generate_adjacency_matrix(warehouse_3d, coordinates):
 
     return adj_matrix
 
-def generate_adjacency_matrix_by_blocks(warehouse_3d, coordinates, block_size=100):
+def generate_diagonal_checkpoints_adjmatrix(warehouse_3d, coordinates, block_size=25):
     """
     Generates an adajcency matrix by blocks to decrease running time.
     Parameters:
@@ -59,23 +59,23 @@ def generate_adjacency_matrix_by_blocks(warehouse_3d, coordinates, block_size=10
     """
     n = len(coordinates)
     adj_matrix = np.zeros((n, n), dtype=float)
+    checkpoint_connection = warehouse_3d.checkpoints_graph
 
-    for i in tqdm(range(0, n, block_size), desc='Generating Manhattan distance for block i'):
-        logging.info(f"Adjacency matrice for block number {i} is being generated...")
+    for block_start in tqdm(range(0, n, block_size), desc="Processing block pairs"):
+        block_end = min(block_start + block_size, n)
 
-
-        for j in range(i, n, block_size):
-            i_end = min(i + block_size, n)
-            j_end = min(j + block_size, n)
-
-            # Distance calculation for blocks
-            for k in range(i, i_end):
-                for l in range(j, j_end): #Using the symetry property of the adjacency matrix to compute only 1/2 the distances
-                    if k != l:
-                        adj_matrix[k, l] = warehouse_3d.compute_manhattan_distance(
-                            coordinates[k], coordinates[l]
-                        )
-                        adj_matrix[l, k] = adj_matrix[k, l]
+        for i in range(block_start, block_end):
+            for j in range(block_start, block_end):
+                if j in checkpoint_connection.get(i, set()):
+                        print("coordonnées de (i,j): ", (i,j))
+                        if i != j:
+                            coord1 = coordinates[i]
+                            coord2 = coordinates[j]
+                            dist = warehouse_3d.compute_manhattan_distance(coord1, coord2)
+                            adj_matrix[i, j] = dist
+                            adj_matrix[j, i] = dist
+                else:
+                    print((i,j), "are not connected")
 
     return adj_matrix
 
@@ -137,13 +137,22 @@ def assemble_global_adjacency_matrix(named_coordinates_dict, warehouse_3d, adj_m
 def main_adjacency(warehouse_3d, category_mapping):
     warehouse_mat = warehouse_3d.mat
 
-    values_to_extract = list(category_mapping.keys())  # [0, 2, 3, 4]
+    values_to_extract = list(category_mapping.keys())
     full_coordinates_dict = extract_coordinates(warehouse_mat, values_to_extract)
 
     named_coordinates_dict = {
         category_mapping[value]: coords
         for value, coords in full_coordinates_dict.items()
     }
+
+    #Generates a mapper between coordinates and its position in the adjacency matrix
+    coordinate_to_index = {}
+
+    index = 1
+    for coordinates_list in full_coordinates_dict.values():
+        for coord in coordinates_list:
+            coordinate_to_index[coord] = index
+            index += 1
 
     # Creation of one ajacency matrix per category
     logging.info("Generating adjacency matrices...")
@@ -155,7 +164,7 @@ def main_adjacency(warehouse_3d, category_mapping):
             #Generates the diagonal matrice
             logging.info(f"Generating the adjacency matrice for category {name} ...")
 
-            adj_matrices[name] = generate_adjacency_matrix_by_blocks(
+            adj_matrices[name] = generate_diagonal_checkpoints_adjmatrix(
                 warehouse_3d, coordinates, block_size=25
             )
             logging.info(f"Diagonal adjacency matrice for category {name} generated.")
@@ -170,7 +179,7 @@ def main_adjacency(warehouse_3d, category_mapping):
     #Assemble diagonal and non diagonal block matrices
     adjacency_matrix = assemble_global_adjacency_matrix(named_coordinates_dict, warehouse_3d, adj_matrices)
 
-    return adjacency_matrix
+    return adjacency_matrix, coordinate_to_index
 
 
 def save_adj_matrix(adjacency_matrix : np.ndarray, warehouse_name : str):
