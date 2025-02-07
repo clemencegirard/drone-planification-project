@@ -62,10 +62,15 @@ def build_warehouse(warehouse_name, warehouses_config):
     for start_mat in warehouse_data["start_mat"]:
         warehouse_3d.add_start_mat(*start_mat)
 
-    # Adding start mat
+    # Adding finish mat
     logging.info("Adding finish mat...")
     for finish_mat in warehouse_data["finish_mat"]:
         warehouse_3d.add_finish_mat(*finish_mat)
+
+    # Adding charging station
+    logging.info("Adding charging station ...")
+    for charging_station in warehouse_data["charging_station"]:
+        warehouse_3d.add_charging_station(*charging_station)
 
     return warehouse_3d
 
