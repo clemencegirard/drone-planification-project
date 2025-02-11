@@ -1,6 +1,8 @@
 import csv
 import random
 import string
+import copy
+from datetime import time
 from pathlib import Path
 from warehouse import Warehouse3D, Object
 from warehouse_builder import *
@@ -46,7 +48,20 @@ def create_objects_in_warehouse(n: int, warehouse: Warehouse3D):
 
     return objects
  
-def generate_task_list(n: int, objects: list[Object], warehouse: Warehouse3D):
+def choose_slot_and_time(times_positions: dict[time, dict[tuple[int, int, int], int]]) -> tuple[int, int, int]:
+    # Iterate over the times in chronological order
+    for departure_time in sorted(times_positions.keys()):
+        slots = times_positions[departure_time]  # Get the slots for this time
+        
+        # Check each slot at this time
+        for slot_pos, capacity in slots.items():
+            if capacity > 0:  # If slot has space, assign object here
+                slots[slot_pos] -= 1  # Decrease capacity
+                return departure_time, slot_pos  # Return selected time and slot
+            
+    return None, None
+
+def generate_task_list(n: int, objects: list[Object], arrival_times: list[time], departure_times: list[time], warehouse: Warehouse3D):
     """Generate a CSV file with n rows of the following format :
 
     object_id  row0 col0 height0  row1 col1 height1
@@ -65,17 +80,30 @@ def generate_task_list(n: int, objects: list[Object], warehouse: Warehouse3D):
         for h in range(warehouse.height)
         if (warehouse.mat[r, c, h] == 2 or warehouse.mat[r, c, h] == 3)
     ]
+    slots_capacity = warehouse.mat_capacity
+    # Departure slots
     departure_slot_positions = [
         (r, c, h) for r in range(warehouse.rows)
         for c in range(warehouse.cols)
         for h in range(warehouse.height)
         if warehouse.mat[r, c, h] == 6
     ]
+    departure_slots = {slot_position: slots_capacity for slot_position in departure_slot_positions}
+    departures = {departure_time: copy.deepcopy(departure_slots) for departure_time in departure_times}
+    # Arrival slots
+    arrival_slot_positions = [
+        (r, c, h) for r in range(warehouse.rows)
+        for c in range(warehouse.cols)
+        for h in range(warehouse.height)
+        if warehouse.mat[r, c, h] == 5
+    ]
+    arrival_slots = {slot_position: slots_capacity for slot_position in arrival_slot_positions}
+    arrivals = {arrival_time: copy.deepcopy(arrival_slots) for arrival_time in arrival_times}
 
     with open(file_path, mode='w', newline='') as file:
         writer = csv.writer(file)
         # Header.
-        writer.writerow(["id", "row0", "col0", "height0", "row1", "col1", "height1"])
+        writer.writerow(["task_type", "id", "row0", "col0", "height0", "row1", "col1", "height1", "time"])
         
         for i in range(n):
             # Prevent empty list errors.
@@ -89,14 +117,30 @@ def generate_task_list(n: int, objects: list[Object], warehouse: Warehouse3D):
             # If the object is on a shelf, it can only be moved to the departure slots.
             # Else, it means it is at the arrival slots, and it has to be moved to a shelf in the warehouse.
             if object.is_on_shelf :
-                final_row, final_col, final_height = random.choice(departure_slot_positions)
-                objects_movable.remove(object)
+                task_type = 'D'
+                time, departure_pos = choose_slot_and_time(departures)
+                if not time or not departure_pos :
+                    logging.info("Warehouse can not ship anymore items for the day")
+                    objects_movable = [object for object in objects_movable if not object.is_on_shelf]
+                    continue
+                else :
+                    final_row, final_col, final_height = departure_pos
+                    objects_movable.remove(object)
             else :
-                final_row, final_col, final_height = random.choice(shelves_positions)
-                object.is_on_shelf = True
-                object.move_to(final_row, final_col, final_height)
+                task_type = 'A'
+                time, arrival_pos = choose_slot_and_time(arrivals)
+                if not time or not arrival_pos :
+                    logging.info("Warehouse can receive no more items for the day")
+                    objects_movable = [object for object in objects_movable if object.is_on_shelf]
+                    continue
+                else :
+                    initial_row, initial_col, initial_height = arrival_pos
+                    final_row, final_col, final_height = random.choice(shelves_positions)
+                    object.is_on_shelf = True
+                    object.move_to(final_row, final_col, final_height)
 
             row = [
+                task_type,
                 object.id,
                 initial_row,
                 initial_col,
@@ -104,7 +148,9 @@ def generate_task_list(n: int, objects: list[Object], warehouse: Warehouse3D):
                 final_row,
                 final_col,
                 final_height,
+                time
             ]
             writer.writerow(row)
     
     print(f"File '{file_name}' generated with {n} rows.")
+    
