@@ -27,7 +27,8 @@ def build_warehouse(warehouse_name, warehouses_config):
 
     # Warehouse creation
     dimensions = warehouse_data["dimensions"]
-    warehouse_3d = Warehouse3D(warehouse_name, *dimensions)
+    mat_capacity = warehouse_data["mat_capacity"][0]
+    warehouse_3d = Warehouse3D(warehouse_name, *dimensions, mat_capacity)
 
     # Adding shelves
     logging.info("Adding shelves...")
