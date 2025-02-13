@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 def extract_coordinates(matrix, values) -> dict:
     """
-    Parameters: 
+    Parameters:
         matrix (np.ndarray): Warehouse matrix.
         values (list): List of values to look for (here [0, 1, 2, 3, 4]).
     Returns: Dictionnary where each key has a value and each value is a list of tuples (x, y, z).
@@ -80,12 +80,7 @@ def generate_diagonal_checkpoints_adjmatrix(warehouse_3d, coordinates, block_siz
     return adj_matrix
 
 def update_with_inter_category_distances(named_coordinates_dict, warehouse_3d, global_matrix, category_positions, category1, category2):
-    """_summary_
-
-    Args:
-        category1 (_type_): _description_
-        category2 (_type_): _description_
-    """    
+     
     start1, _ = category_positions[category1]
     start2, _ = category_positions[category2]
     
