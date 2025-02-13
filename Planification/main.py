@@ -1,20 +1,31 @@
 ###############  Import section ###################
 
+from datetime import time
 from adjacency_matrix import *
 from warehouse_builder import load_config,build_warehouse
 from bellman import main_bellman
+from task_list_generator import create_objects_in_warehouse, generate_task_list
 from planification import main_planification
+
+###############  Parameters ###################
+
+warehouse_name = "one_level_F_warehouse"
+n_objects = 60
+n_tasks = 120
+arrival_time_slots = [time(8,0,0), time(10,0,0)]
+departure_time_slots = [time(14,0,0), time(17,0,0)]
 
 ###############  Code principal ###################
 
-# Load confi
+# Load config
 warehouses_config, category_mapping = load_config()
-
-# Sélectionner un entrepôt
-warehouse_name = "one_level_U_warehouse"
 
 # Build warehouse
 warehouse_3d = build_warehouse(warehouse_name, warehouses_config)
+objects = create_objects_in_warehouse(n_objects, warehouse_3d)
+
+# Build the list of tasks to accomplish during the day.
+task_list_path = generate_task_list(n_tasks, objects, arrival_time_slots, departure_time_slots, warehouse_3d)
 
 #False by default. If True, will display the warehouse in a plot
 warehouse_3d.display()
@@ -33,8 +44,6 @@ print("\n(")
 #Call Bellman algorithm
 final_adjacency_matrix_2 = main_bellman(final_adjacency_matrix)
 
-
 main_planification(final_adjacency_matrix_2, coordinate_to_index, warehouse_name,3)
-
 
 print(final_adjacency_matrix_2)
