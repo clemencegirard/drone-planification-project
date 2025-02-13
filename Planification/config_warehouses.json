@@ -30,7 +30,10 @@
       ],
       "checkpoints": [
         [20, 1], [20, 9], [10, 9], [20, 21], [10, 21], [20, 28], [1, 1], [1, 28]
-      ]
+      ],
+      "start_mat": [],
+      "finish_mat": [],
+      "charging_station": []
     },
     "three_level_line_warehouse": {
       "dimensions": [8, 8, 3],
@@ -116,7 +119,6 @@
     }
   },
   "category_mapping": {
-    "0": "empty",
     "2": "storage_line",
     "3": "object",
     "4": "checkpoint",
