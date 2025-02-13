@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import deque
 import logging
+from pathlib import Path
 import networkx as nx
 
 # Logs configuration
@@ -12,9 +13,7 @@ class WarehouseError(Exception):
     pass
 
 class Warehouse3D:
-
     def __init__(self, name: str, rows: int, cols: int, height: int, mat_capacity :int):
-
         self.name = name
         self.rows = rows
         self.cols = cols
@@ -22,6 +21,17 @@ class Warehouse3D:
         self.mat_capacity = mat_capacity
         self.mat = np.zeros((self.rows, self.cols, self.height))
         self.checkpoints_graph = {}
+
+    def save_warehouse_plot(self, fig):
+        current_path = Path(__file__).parent.resolve()
+        warehouse_plot_dir = current_path / "warehouse_plot"
+        warehouse_plot_dir.mkdir(parents=True, exist_ok=True)
+
+        file_name = f"{self.name}.png"
+        file_path = warehouse_plot_dir / file_name
+
+        fig.savefig(file_path)
+        print(f"Warehouse plot saved to {file_path}")
 
     def display(self, display=False):
         if display:
@@ -68,7 +78,7 @@ class Warehouse3D:
             # Create legend handles
             handles = [plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=c, markersize=10) for c in colors]
             fig.legend(handles, labels, loc="upper right", fontsize=10)
-
+            self.save_warehouse_plot(fig)
             plt.show()
 
     def print_mat(self):

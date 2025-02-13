@@ -2,6 +2,7 @@ import logging
 from tqdm import tqdm
 import numpy as np
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 #Logs configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -46,7 +47,7 @@ def generate_adjacency_matrix(warehouse_3d, coordinates):
 
     return adj_matrix
 
-def generate_adjacency_matrix_by_blocks(warehouse_3d, coordinates, block_size=100):
+def generate_diagonal_checkpoints_adjmatrix(warehouse_3d, coordinates, block_size=25):
     """
     Generates an adajcency matrix by blocks to decrease running time.
     Parameters:
@@ -58,23 +59,23 @@ def generate_adjacency_matrix_by_blocks(warehouse_3d, coordinates, block_size=10
     """
     n = len(coordinates)
     adj_matrix = np.zeros((n, n), dtype=float)
+    checkpoint_connection = warehouse_3d.checkpoints_graph
 
-    for i in tqdm(range(0, n, block_size), desc='Generating Manhattan distance for block i'):
-        logging.info(f"Adjacency matrice for block number {i} is being generated...")
+    for block_start in tqdm(range(0, n, block_size), desc="Processing block pairs"):
+        block_end = min(block_start + block_size, n)
 
-
-        for j in range(i, n, block_size):
-            i_end = min(i + block_size, n)
-            j_end = min(j + block_size, n)
-
-            # Distance calculation for blocks
-            for k in range(i, i_end):
-                for l in range(j, j_end): #Using the symetry property of the adjacency matrix to compute only 1/2 the distances
-                    if k != l:
-                        adj_matrix[k, l] = warehouse_3d.compute_manhattan_distance(
-                            coordinates[k], coordinates[l]
-                        )
-                        adj_matrix[l, k] = adj_matrix[k, l]
+        for i in range(block_start, block_end):
+            for j in range(block_start, block_end):
+                if j in checkpoint_connection.get(i, set()):
+                        print("coordonnées de (i,j): ", (i,j))
+                        if i != j:
+                            coord1 = coordinates[i]
+                            coord2 = coordinates[j]
+                            dist = warehouse_3d.compute_manhattan_distance(coord1, coord2)
+                            adj_matrix[i, j] = dist
+                            adj_matrix[j, i] = dist
+                else:
+                    print((i,j), "are not connected")
 
     return adj_matrix
 
@@ -114,9 +115,9 @@ def assemble_global_adjacency_matrix(named_coordinates_dict, warehouse_3d, adj_m
     global_matrix = np.zeros((total_size, total_size), dtype=float)
 
     current_position = 0
-    category_positions = {}  # Initialise comme un dictionnaire
+    category_positions = {}
 
-    # Placer chaque matrice dans la matrice globale
+    # Place every diagonal matrice in the global matrix
     for category, adj_matrix in adj_matrices.items():
         size = adj_matrix.shape[0]
         global_matrix[current_position:current_position + size,
@@ -124,6 +125,7 @@ def assemble_global_adjacency_matrix(named_coordinates_dict, warehouse_3d, adj_m
         category_positions[category] = (current_position, current_position + size)
         current_position += size
     
+    #Add non-diagonal block matrices in the global matrix
     update_with_inter_category_distances(named_coordinates_dict, warehouse_3d, global_matrix, category_positions, 'object', 'checkpoint')
     update_with_inter_category_distances(named_coordinates_dict, warehouse_3d, global_matrix, category_positions, 'storage_line', 'checkpoint')
     update_with_inter_category_distances(named_coordinates_dict, warehouse_3d, global_matrix, category_positions, 'start_mat', 'finish_mat')
@@ -135,7 +137,7 @@ def assemble_global_adjacency_matrix(named_coordinates_dict, warehouse_3d, adj_m
 def main_adjacency(warehouse_3d, category_mapping):
     warehouse_mat = warehouse_3d.mat
 
-    values_to_extract = list(category_mapping.keys())  # [0, 2, 3, 4]
+    values_to_extract = list(category_mapping.keys())
     full_coordinates_dict = extract_coordinates(warehouse_mat, values_to_extract)
 
     named_coordinates_dict = {
@@ -143,36 +145,44 @@ def main_adjacency(warehouse_3d, category_mapping):
         for value, coords in full_coordinates_dict.items()
     }
 
+    #Generates a mapper between coordinates and its position in the adjacency matrix
+    coordinate_to_index = {}
+
+    index = 1
+    for coordinates_list in full_coordinates_dict.values():
+        for coord in coordinates_list:
+            coordinate_to_index[coord] = index
+            index += 1
+
     # Creation of one ajacency matrix per category
     logging.info("Generating adjacency matrices...")
     adj_matrices = {}
 
     for name, coordinates in named_coordinates_dict.items():
 
-        if name == 'empty':
-            # Adjacency matrices for empty is made of zeros, it cannot be reach by a drone.
+        if name == "checkpoint":
+            #Generates the diagonal matrice
+            logging.info(f"Generating the adjacency matrice for category {name} ...")
+
+            adj_matrices[name] = generate_diagonal_checkpoints_adjmatrix(
+                warehouse_3d, coordinates, block_size=25
+            )
+            logging.info(f"Diagonal adjacency matrice for category {name} generated.")
+
+        else:
+            # Diagonal adjacency matrices for every category except checkpoint is made of zeros.
             logging.info(f"Generating the adjacency matrice for category {name} ...")
             n = len(coordinates)
             adj_matrices[name] = np.zeros((n, n), dtype=float)
             logging.info(f"Adjacency matrice for category {name} generated.")
 
-        else:
-            # Display coordinates of every points for each category
-            print(f"Coordonnées pour {name} : {coordinates}", len(coordinates))
-
-            logging.info(f"Generating the adjacency matrice for category {name} ...")
-
-            adj_matrices[name] = generate_adjacency_matrix_by_blocks(
-                warehouse_3d, coordinates, block_size=25
-            )
-            logging.info(f"Adjacency matrice for category {name} generated.")
-
+    #Assemble diagonal and non diagonal block matrices
     adjacency_matrix = assemble_global_adjacency_matrix(named_coordinates_dict, warehouse_3d, adj_matrices)
 
-    return adjacency_matrix
+    return adjacency_matrix, coordinate_to_index
 
 
-def save(adjacency_matrix : np.ndarray, warehouse_name : str):
+def save_adj_matrix(adjacency_matrix : np.ndarray, warehouse_name : str):
 
     current_path = Path(__file__).parent.resolve()
 
@@ -187,3 +197,16 @@ def save(adjacency_matrix : np.ndarray, warehouse_name : str):
     # Save the  matrix in a csv file
     np.savetxt(file_path, adjacency_matrix, delimiter=",")
     print(f"Adjacency matrix saved to {file_path}")
+
+
+def save_warehouse_plot(fig, warehouse_name: str):
+    current_path = Path(__file__).parent.resolve()
+    warehouse_plot_dir = current_path / "warehouse_plot"
+    warehouse_plot_dir.mkdir(parents=True, exist_ok=True)
+
+    file_name = f"{warehouse_name}.png"
+    file_path = warehouse_plot_dir / file_name
+
+    fig.savefig(file_path)
+    print(f"Warehouse plot saved to {file_path}")
+    plt.show()
