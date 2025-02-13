@@ -3,6 +3,7 @@
 from adjacency_matrix import *
 from warehouse_builder import load_config,build_warehouse
 from bellman import main_bellman
+from planification import main_planification
 
 ###############  Code principal ###################
 
@@ -31,5 +32,9 @@ save_adj_matrix(final_adjacency_matrix, warehouse_name)
 print("\n(")
 #Call Bellman algorithm
 final_adjacency_matrix_2 = main_bellman(final_adjacency_matrix)
+
+
+main_planification(final_adjacency_matrix_2, coordinate_to_index, warehouse_name,3)
+
 
 print(final_adjacency_matrix_2)

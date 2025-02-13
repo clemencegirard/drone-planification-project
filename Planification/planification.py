@@ -6,6 +6,7 @@ import numpy as np
 
 def open_csv(csv_file_name: str):
     """Ouvre un fichier CSV et retourne un DataFrame pandas."""
+
     path = os.path.join(os.path.dirname(__file__), "TaskList", csv_file_name)
 
     # Lecture du fichier CSV avec pandas
@@ -24,21 +25,23 @@ def assigner_drones(csv_file, nb_drone):
     return csv_file
 
 
-def calcul_distance(matrice_adjacence : np.ndarray, dictionnaire_position : dict, t1 : tuple ,t2 : tuple):
+def calcul_distance(matrice_bellman : np.ndarray, dictionnaire_position : dict, t1 : tuple ,t2 : tuple):
 
     n1 = dictionnaire_position[t1]
     n2 = dictionnaire_position[t2]
 
-    return matrice_adjacence[n1][n2]
+    return matrice_bellman[n1][n2]
 
 
-
-def preparation_donnees(matrice_adjacence,dictionnaire_position, csv_file_name, nb_drone: int):
+def preparation_donnees(matrice_bellman,dictionnaire_position, csv_file_name, nb_drone: int):
     # Générer les heures de 8h à 18h (exclu) avec un pas de 1 heure
     hour = np.arange(8, 19, 1)
 
+    formatted_hours = [f"{h:02d}:00:00" for h in hour]
+
     # Créer un DataFrame avec ces heures formatées
-    df = pd.DataFrame(index=pd.to_datetime(hour, format='%H').strftime('%H:%M'))
+    df = pd.DataFrame(index=pd.to_datetime(formatted_hours, format='%H:%M:%S').strftime('%H:%M:%S'))
+
     df['tache'] = ""
     df['drone'] = ""
 
@@ -46,7 +49,7 @@ def preparation_donnees(matrice_adjacence,dictionnaire_position, csv_file_name, 
     csv_file = open_csv(csv_file_name)
 
     # Convertir la colonne 'time' en datetime pour un tri correct
-    csv_file['time'] = pd.to_datetime(csv_file['time'], format='%H:%M').dt.strftime('%H:%M')
+    csv_file['time'] = pd.to_datetime(csv_file['time'], format='%H:%M:%S').dt.strftime('%H:%M:%S')
 
     # Trier les valeurs par 'time'
     csv_file = csv_file.sort_values(by=['time'])
@@ -62,7 +65,7 @@ def preparation_donnees(matrice_adjacence,dictionnaire_position, csv_file_name, 
 
     csv_file['task_time'] = csv_file.apply(
         lambda row: calcul_distance(
-            matrice_adjacence,
+            matrice_bellman,
             dictionnaire_position,
             [row['row0'], row['col0'], row['height0']],
             [row['row1'], row['col1'], row['height1']]
@@ -75,19 +78,21 @@ def preparation_donnees(matrice_adjacence,dictionnaire_position, csv_file_name, 
 
 
 
-def planification(matrice_adjacence,dictionnaire_position, csv_file_name, nb_drone: int):
+def main_planification(matrice_bellman,dictionnaire_position, warehouse_name, nb_drone: int):
 
     """Crée un planning horaire et charge les tâches depuis un CSV."""
 
-    df, csv_file =  preparation_donnees(matrice_adjacence,dictionnaire_position, csv_file_name, nb_drone)
+    csv_file_name = 'TL' + warehouse_name + '.csv'
+
+    df, csv_file =  preparation_donnees(matrice_bellman,dictionnaire_position, csv_file_name, nb_drone)
 
     return csv_file, df
 
 
 
 # Exécution de la fonction avec un fichier de test
-csv_file, df = planification("test_planning.csv",3)
+# csv_file, df = main_planification([],{},"TL_three_level_line_warehouse.csv",3)
 
 # Affichage des résultats
-print("Données du fichier CSV triées :\n", csv_file)
-print("Données du fichier df :\n", df)
+# print("Données du fichier CSV triées :\n", csv_file)
+# print("Données du fichier df :\n", df)

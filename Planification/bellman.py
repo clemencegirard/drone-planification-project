@@ -1,5 +1,6 @@
 import numpy as np
 import csv
+from tqdm import tqdm
 
 
 def inf_mat(M : np.ndarray):
@@ -42,9 +43,8 @@ def minimum_distance_matrix(M):
     n = len(M)
     C = np.zeros((n, n))
 
-    for i in range(n):
+    for i in tqdm(range(n), desc="Bellman iteration"):
         for j in range(n):
-
             dist = [float('inf')] * n
             dist[i] = 0  # La distance au nœud de départ est 0
             pred = [-1] * n  # Prédécesseur de chaque nœud (pour reconstruire le chemin)
