@@ -15,9 +15,9 @@ def extract_coordinates(matrix, values) -> dict:
     Returns: Dictionnary where each key has a value and each value is a list of tuples (x, y, z).
     """
     coordinates = {value: [] for value in values}
-    for x in range(matrix.shape[0]):
-        for y in range(matrix.shape[1]):
-            for z in range(matrix.shape[2]):
+    for z in range(matrix.shape[2]):
+        for x in range(matrix.shape[0]):
+            for y in range(matrix.shape[1]):
                 cell_value = matrix[x, y, z]
                 if cell_value in values:
                     coordinates[cell_value].append((x, y, z))
@@ -72,6 +72,7 @@ def generate_diagonal_checkpoints_adjmatrix(warehouse_3d, coordinates, block_siz
                             coord1 = coordinates[i]
                             coord2 = coordinates[j]
                             dist = warehouse_3d.compute_manhattan_distance(coord1, coord2)
+                            print(f"distance entre coordonnées {i} {coord1} et {j} {coord2}", dist)
                             adj_matrix[i, j] = dist
                             adj_matrix[j, i] = dist
                 else:

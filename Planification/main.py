@@ -34,7 +34,7 @@ warehouse_3d.show_graph()
 #Generates the adjacency matrix
 final_adjacency_matrix, coordinate_to_index = main_adjacency(warehouse_3d, category_mapping)
 
-print(final_adjacency_matrix)
+print("Final adjacency matrix:", final_adjacency_matrix)
 print("Dictionnary to map a point coordinates and its position in the adjacency matrix :", coordinate_to_index)
 
 #Save the adjacency matrix generated for the warehouse in the folder AMatrix as a csv file
