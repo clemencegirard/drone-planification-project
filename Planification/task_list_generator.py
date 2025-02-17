@@ -11,7 +11,7 @@ def generate_object_id(length=8):
     """Generate a random alphanumeric string of uppercase letters and digits."""
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
-def create_objects_in_warehouse(n: int, warehouse: Warehouse3D):
+def create_objects_in_warehouse(n_objects: int, warehouse: Warehouse3D):
     objects = []
     # Available shelf positions in the warehouse.
     available_positions = [
@@ -28,7 +28,7 @@ def create_objects_in_warehouse(n: int, warehouse: Warehouse3D):
         if warehouse.mat[r, c, h] == 5
     ]
 
-    for _ in range(n):
+    for _ in range(n_objects):
         object_id = generate_object_id()
         is_on_shelf = bool(random.randint(0, 1))
 
@@ -61,7 +61,7 @@ def choose_slot_and_time(times_positions: dict[time, dict[tuple[int, int, int], 
             
     return None, None
 
-def generate_task_list(n: int, objects: list[Object], arrival_times: list[time], departure_times: list[time], warehouse: Warehouse3D):
+def generate_task_list(n_tasks: int, objects: list[Object], arrival_times: list[time], departure_times: list[time], warehouse: Warehouse3D):
     """Generate a CSV file with n rows of the following format :
 
     object_id  row0 col0 height0  row1 col1 height1
@@ -105,10 +105,10 @@ def generate_task_list(n: int, objects: list[Object], arrival_times: list[time],
         # Header.
         writer.writerow(["task_type", "id", "row0", "col0", "height0", "row1", "col1", "height1", "time"])
         
-        for i in range(n):
+        for i in range(n_tasks):
             # Prevent empty list errors.
             if not objects_movable:
-                logging.info(f"Warning: No more movable objects available before having listed all {n} tasks. There will be {i} tasks.")
+                logging.info(f"Warning: No more movable objects available before having listed all {n_tasks} tasks. There will be {i} tasks.")
                 break
             object = random.choice(objects_movable)
             initial_row = object.row
@@ -152,5 +152,7 @@ def generate_task_list(n: int, objects: list[Object], arrival_times: list[time],
             ]
             writer.writerow(row)
     
-    print(f"File '{file_name}' generated with {n} rows.")
+    print(f"File '{file_name}' generated with {n_tasks} rows.")
+
+    return file_name
     
