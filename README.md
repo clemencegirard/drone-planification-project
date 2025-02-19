@@ -29,6 +29,8 @@ The script generates the adjacency matrix by block for these distances above onl
 
 ![Texte alternatif](Data_test/adjmatrix_schema.png "Adjacency matrix for one_level_U_matrix").
 
+![Texte alternatif](Data_test/U_warehouse.png "Matrix").
+
 ## Name
 Trafic de drones dans un espace restreint.
 
