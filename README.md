@@ -28,7 +28,7 @@ This way, it calculates the distance :
 The script generates the adjacency matrix by block for these distances above only and assemble everything in a global matrix.
 
 <img src="Data_test/adjmatrix_schema.png" alt="Adjacency matrix for one_level_U_matrix" width="500" height="300">
-<img src="Data_test/U_warehouse.png" alt="Matrix" width="500" height="300">
+<img src="Data_test/U_warehouse.png" alt="Matrix" width="300" height="175">
 
 ## Name
 Trafic de drones dans un espace restreint.
