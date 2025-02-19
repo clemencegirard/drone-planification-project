@@ -38,10 +38,13 @@ def create_objects_in_warehouse(n_objects: int, warehouse: Warehouse3D):
             row, col, height = random.choice(available_positions)
             warehouse.add_object(row, col, height)
             available_positions.remove((row, col, height))
-        else:
+        elif arrival_slot_positions :
             # If there are no more available positions, the object will arrive on the arrival slots.
             is_on_shelf = False
             row, col, height = random.choice(arrival_slot_positions)
+        else :
+            logging.log(1, "No empty spot available and no arrival mat")
+            break
 
         object = Object(object_id, is_on_shelf, row, col, height)
         objects.append(object)
