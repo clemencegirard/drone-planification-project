@@ -67,16 +67,14 @@ def generate_diagonal_checkpoints_adjmatrix(warehouse_3d, coordinates, block_siz
         for i in range(block_start, block_end):
             for j in range(block_start, block_end):
                 if j in checkpoint_connection.get(i, set()):
-                        print("coordonnées de (i,j): ", (i,j))
                         if i != j:
                             coord1 = coordinates[i]
                             coord2 = coordinates[j]
                             dist = warehouse_3d.compute_manhattan_distance(coord1, coord2)
-                            print(f"distance entre coordonnées {i} {coord1} et {j} {coord2}", dist)
                             adj_matrix[i, j] = dist
                             adj_matrix[j, i] = dist
                 else:
-                    print((i,j), "are not connected")
+                    logging.warning(f"({i},{j}), are not connected")
 
     return adj_matrix
 
@@ -192,7 +190,7 @@ def save_adj_matrix(adjacency_matrix : np.ndarray, warehouse_name : str):
 
     # Save the  matrix in a csv file
     np.savetxt(file_path, adjacency_matrix, delimiter=",")
-    print(f"Adjacency matrix saved to {file_path}")
+    logging.info(f"Adjacency matrix saved to {file_path}")
 
 
 def save_warehouse_plot(fig, warehouse_name: str):
@@ -204,5 +202,5 @@ def save_warehouse_plot(fig, warehouse_name: str):
     file_path = warehouse_plot_dir / file_name
 
     fig.savefig(file_path)
-    print(f"Warehouse plot saved to {file_path}")
+    logging.info(f"Warehouse plot saved to {file_path}")
     plt.show()
