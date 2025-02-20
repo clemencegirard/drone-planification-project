@@ -158,4 +158,3 @@ def generate_task_list(n_tasks: int, objects: list[Object], arrival_times: list[
     print(f"File '{file_name}' generated with {n_tasks} rows.")
 
     return file_name
-    
