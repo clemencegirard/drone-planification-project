@@ -37,7 +37,7 @@ objects = create_objects_in_warehouse(n_objects, warehouse_3d)
 task_list_path = generate_task_list(n_tasks, objects, arrival_time_slots, departure_time_slots, warehouse_3d)
 
 #False by default. If True, will display the warehouse in a plot
-warehouse_3d.display(False)
+warehouse_3d.display()
 warehouse_3d.show_graph()
 
 #Generates the adjacency matrix
