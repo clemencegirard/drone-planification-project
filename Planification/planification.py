@@ -1,98 +1,107 @@
-import csv
 import os
+from datetime import timedelta, datetime
 import pandas as pd
 import numpy as np
+from typing import Dict, List, Tuple, Optional
+from Planification.warehouse import Warehouse3D
 
 
-def open_csv(csv_file_name: str):
-    """Ouvre un fichier CSV et retourne un DataFrame pandas."""
-
+def open_csv(csv_file_name: str) -> pd.DataFrame:
+    """Open a CSV file and return a pandas DataFrame."""
     path = os.path.join(os.path.dirname(__file__), "TaskList", csv_file_name)
-
-    # Lecture du fichier CSV avec pandas
-    return pd.read_csv(path, header=0)  # header=0 pour s'assurer que la première ligne est l'en-tête
+    return pd.read_csv(path, header=0)
 
 
-def assigner_drones(csv_file, nb_drone):
-    """Attribue un drone à chaque tâche de manière cyclique."""
-    csv_file['drone'] = ""  # Initialise la colonne
-
-    compteur = 0
-    for index, __ in csv_file.iterrows():
-        csv_file.loc[index, 'drone'] = f'd{compteur % nb_drone + 1}'
-        compteur += 1
-
+def assign_drones(csv_file: pd.DataFrame, num_drones: int) -> pd.DataFrame:
+    """Assign drones to tasks in a cyclic manner."""
+    csv_file['drone'] = [f'd{i % num_drones + 1}' for i in range(len(csv_file))]
     return csv_file
 
 
-def calcul_distance(matrice_bellman : np.ndarray, dictionnaire_position : dict, t1 : tuple ,t2 : tuple):
+def compute_distance(bellman_matrix: np.ndarray, position_dict: Dict[Tuple[int, int, int], int],
+                    start: List[int], end: List[int]) -> int:
+    """Compute the distance between two points using the Bellman matrix."""
+    n1 = position_dict[tuple(start)] - 1
+    n2 = position_dict[tuple(end)] - 1
+    return bellman_matrix[n1][n2]
 
-    n1 = dictionnaire_position[t1]
-    n2 = dictionnaire_position[t2]
 
-    return matrice_bellman[n1][n2]
+def compute_travel_time(start: Tuple[int, int, int], end: Tuple[int, int, int]) -> timedelta:
+    """Compute the travel time between two points."""
+    return timedelta(minutes=abs(start[0] - end[0]) + abs(start[1] - end[1]) + abs(start[2] - end[2]))
 
 
-def preparation_donnees(matrice_bellman,dictionnaire_position, csv_file_name, nb_drone: int):
-    # Générer les heures de 8h à 18h (exclu) avec un pas de 1 heure
-    hour = np.arange(8, 19, 1)
-
-    formatted_hours = [f"{h:02d}:00:00" for h in hour]
-
-    # Créer un DataFrame avec ces heures formatées
-    df = pd.DataFrame(index=pd.to_datetime(formatted_hours, format='%H:%M:%S').strftime('%H:%M:%S'))
-
-    df['tache'] = ""
-    df['drone'] = ""
-
-    # Ouvrir et trier le fichier CSV
+def prepare_csv(bellman_matrix: np.ndarray, position_dict: Dict[Tuple[int, int, int], int],
+                csv_file_name: str, warehouse: Warehouse3D, num_drones: int) -> pd.DataFrame:
+    """Prepare the CSV file by sorting, assigning drones, and computing distances."""
     csv_file = open_csv(csv_file_name)
-
-    # Convertir la colonne 'time' en datetime pour un tri correct
     csv_file['time'] = pd.to_datetime(csv_file['time'], format='%H:%M:%S').dt.strftime('%H:%M:%S')
-
-    # Trier les valeurs par 'time'
     csv_file = csv_file.sort_values(by=['time'])
-
-    # Assigner les drones
-    csv_file = assigner_drones(csv_file, nb_drone)
-
-    grouped_tasks = csv_file.groupby('time')[['id', 'drone']].agg(lambda x: ', '.join(x))
-
-    # Mapper les tâches vers df
-    df['tache'] = df.index.map(grouped_tasks['id']).fillna("")
-    df['drone'] = df.index.map(grouped_tasks['drone']).fillna("")
+    csv_file = assign_drones(csv_file, num_drones)
 
     csv_file['task_time'] = csv_file.apply(
-        lambda row: calcul_distance(
-            matrice_bellman,
-            dictionnaire_position,
+        lambda row: compute_distance(bellman_matrix, position_dict, [row['row0'], row['col0'], row['height0']],
+                                     [row['row1'], row['col1'], row['height1']]),
+        axis=1
+    )
+
+    csv_file[['task_time_2', 'task_path']] = csv_file.apply(
+        lambda row: pd.Series(warehouse.compute_manhattan_distance_with_BFS(
             [row['row0'], row['col0'], row['height0']],
-            [row['row1'], row['col1'], row['height1']]
-        ),
-        axis=1)
+            [row['row1'], row['col1'], row['height1']],
+            True
+        )),
+        axis=1
+    )
+    return csv_file
 
 
-    return df,csv_file
+def create_drone_schedule(csv: pd.DataFrame, drone_number: int, warehouse: Warehouse3D) -> pd.DataFrame:
+    """Create a full schedule for a specific drone."""
+    new_time = csv.loc[csv['drone'] == f'd{drone_number}']['time'].iloc[0]
+    new_time = datetime.strptime(new_time, "%H:%M:%S").time()
+    df_path = pd.DataFrame(columns=['time', 'id', 'position'])
+    last_state = None
+    first_iteration = True
+
+    for _, row in csv.loc[csv['drone'] == f'd{drone_number}', ['task_path', 'id', 'time']].iterrows():
+        task_id = row['id']
+        positions = row['task_path']
+        time_start = datetime.strptime(row['time'], "%H:%M:%S").time()
+
+        if time_start > new_time:
+            new_time = time_start
+
+        if not first_iteration:
+            __, return_path = warehouse.compute_manhattan_distance_with_BFS(last_state, positions[0], True)
+            reduced_return_path = return_path[1:-1]
+
+            for pos in reduced_return_path:
+                time_delta = compute_travel_time(pos, df_path.iloc[-1]['position'])
+                new_time = (datetime.combine(datetime.today(), new_time) + time_delta).time()
+                df_path.loc[len(df_path)] = [new_time, "", pos]
+
+        for pos in positions:
+            if df_path.empty:
+                df_path.loc[len(df_path)] = [time_start, task_id, pos]
+            else:
+                time_delta = compute_travel_time(pos, df_path.iloc[-1]['position'])
+                new_time = (datetime.combine(datetime.today(), new_time) + time_delta).time()
+                df_path.loc[len(df_path)] = [new_time, task_id, pos]
+
+        first_iteration = False
+        last_state = positions[-1]
+
+    return df_path
 
 
+def schedule(bellman_matrix: np.ndarray, position_dict: Dict[Tuple[int, int, int], int],
+                     csv_file_name: str, warehouse: Warehouse3D, num_drones: int) -> Dict[str, pd.DataFrame]:
+    """Prepare the schedule for all drones."""
+    csv_file_name = f'TL_{warehouse.name}.csv'
+    csv = prepare_csv(bellman_matrix, position_dict, csv_file_name, warehouse, num_drones)
+    drone_schedules = {f'd{i}': create_drone_schedule(csv, i, warehouse) for i in range(1, num_drones + 1)}
+
+    return drone_schedules
 
 
-def main_planification(matrice_bellman,dictionnaire_position, warehouse_name, nb_drone: int):
-
-    """Crée un planning horaire et charge les tâches depuis un CSV."""
-
-    csv_file_name = 'TL' + warehouse_name + '.csv'
-
-    df, csv_file =  preparation_donnees(matrice_bellman,dictionnaire_position, csv_file_name, nb_drone)
-
-    return csv_file, df
-
-
-
-# Exécution de la fonction avec un fichier de test
-# csv_file, df = main_planification([],{},"TL_three_level_line_warehouse.csv",3)
-
-# Affichage des résultats
-# print("Données du fichier CSV triées :\n", csv_file)
-# print("Données du fichier df :\n", df)

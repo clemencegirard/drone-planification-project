@@ -4,6 +4,7 @@ from collections import deque
 import logging
 from pathlib import Path
 import networkx as nx
+from typing import Dict, List, Tuple, Optional
 
 # Logs configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -31,7 +32,7 @@ class Warehouse3D:
         file_path = warehouse_plot_dir / file_name
 
         fig.savefig(file_path)
-        print(f"Warehouse plot saved to {file_path}")
+        logging.info(f"Warehouse plot saved to {file_path}")
 
     def display(self, display=False):
         if display:
@@ -238,59 +239,87 @@ class Warehouse3D:
 
             return plt.show()
 
+    from collections import deque
+    import numpy as np
+    import logging
 
-    def compute_manhattan_distance(self, c1: tuple, c2: tuple) -> int:
+    class WarehouseError(Exception):
+        pass
+
+    def compute_manhattan_distance_with_BFS(self, c1: tuple, c2: tuple, return_path: bool = False, reduced : bool = True):
         x1, y1, z1 = c1
         x2, y2, z2 = c2
 
         if not (0 <= x1 < self.rows and 0 <= y1 < self.cols and 0 <= z1 < self.height):
             logging.warning("Start point is out of warehouse bounds.")
-            raise WarehouseError("Start point is out of warehouse bounds.")  # Raise error
-            return float('inf')
+            raise WarehouseError("Start point is out of warehouse bounds.")
 
         if not (0 <= x2 < self.rows and 0 <= y2 < self.cols and 0 <= z2 < self.height):
             logging.warning("End point is out of warehouse bounds.")
-            raise WarehouseError("End point is out of warehouse bounds.")  # Raise error
-            return float('inf')
+            raise WarehouseError("End point is out of warehouse bounds.")
 
-        # Check if points are valid
         if self.mat[x1, y1, z1] == 1 or self.mat[x2, y2, z2] == 1:
             logging.warning('Point does not correspond to a circulation zone.')
-            raise WarehouseError('Point does not correspond to a circulation zone.')  # Raise error
-            return float('inf')  # No path possible
+            raise WarehouseError('Point does not correspond to a circulation zone.')
 
-        # Possible directions for movement (up, down, left, right, up-z, down-z)
-        directions = [
-            (0, 1, 0), (0, -1, 0), (1, 0, 0), (-1, 0, 0), (0, 0, 1), (0, 0, -1),
-        ]
+        directions = [(0, 1, 0), (0, -1, 0), (1, 0, 0), (-1, 0, 0), (0, 0, 1), (0, 0, -1)]
 
-        # Initialize BFS queue and visited cells list
-        queue = deque([(x1, y1, z1, 0)])  # (x, y, z, distance)
+        queue = deque([(x1, y1, z1, 0)])
         visited = np.zeros_like(self.mat, dtype=bool)
+        parent = {}  # To reconstruct the shortest path
 
-        # Mark the start point as visited
         visited[x1, y1, z1] = True
 
         while queue:
             x, y, z, dist = queue.popleft()
 
-            # If we reach the end point, return the distance
             if (x, y, z) == (x2, y2, z2):
+                if return_path:
+                    path = []
+                    while (x, y, z) != (x1, y1, z1):
+                        path.append((x, y, z))
+                        x, y, z = parent[(x, y, z)]
+                    path.append((x1, y1, z1))
+                    path.reverse()
+                    if reduced:
+                        return dist, self.reduce_path(path)
+                    else:
+                        return dist, self.reduce_path(path)
                 return dist
 
-            # Explore neighbors
             for dx, dy, dz in directions:
-
                 nx, ny, nz = x + dx, y + dy, z + dz
 
-                # Check if neighbor is within bounds, not visited, and free
                 if (0 <= nx < self.rows and 0 <= ny < self.cols and 0 <= nz < self.height and
                         not visited[nx, ny, nz] and self.mat[nx, ny, nz] != 1):
-                    visited[nx, ny, nz] = True  # Mark as visited
-                    queue.append((nx, ny, nz, dist + 1))  # Add neighbor to queue
+                    visited[nx, ny, nz] = True
+                    parent[(nx, ny, nz)] = (x, y, z)
+                    queue.append((nx, ny, nz, dist + 1))
 
-        # If we exit the loop without finding the end point, no path is possible
-        return float('inf')
+        return (float('inf'), []) if return_path else float('inf')
+
+
+    def reduce_path(self, path_list: List[Tuple[int, int, int]]) -> List[Tuple[int, int, int]]:
+        """Reduce the path by removing unnecessary intermediate points."""
+        if not path_list or len(path_list) < 2:
+            return path_list
+
+        reduced_path = [path_list[0]]
+        prev_direction = None
+
+        for i in range(1, len(path_list)):
+            dx, dy, dz = path_list[i][0] - path_list[i - 1][0], path_list[i][1] - path_list[i - 1][1], path_list[i][2] - \
+                         path_list[i - 1][2]
+            direction = (dx, dy, dz)
+
+            if prev_direction is not None and direction != prev_direction:
+                reduced_path.append(path_list[i - 1])
+
+            prev_direction = direction
+
+        reduced_path.append(path_list[-1])
+
+        return reduced_path
 
 class Object:
     def __init__(self, id: str, is_on_shelf: bool, row: int, col: int, height: int):

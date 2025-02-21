@@ -38,10 +38,10 @@ def generate_adjacency_matrix(warehouse_3d, coordinates):
         for j in range(i, n):
             if i!=j:
 
-                adj_matrix[i,j] = warehouse_3d.compute_manhattan_distance(
+                adj_matrix[i,j] = warehouse_3d.compute_manhattan_distance_with_BFS(
                     coordinates[i], coordinates[j]
                     )
-                adj_matrix[j,i] = warehouse_3d.compute_manhattan_distance(
+                adj_matrix[j,i] = warehouse_3d.compute_manhattan_distance_with_BFS(
                     coordinates[i], coordinates[j]
                     )
 
@@ -70,7 +70,7 @@ def generate_diagonal_checkpoints_adjmatrix(warehouse_3d, coordinates, block_siz
                         if i != j:
                             coord1 = coordinates[i]
                             coord2 = coordinates[j]
-                            dist = warehouse_3d.compute_manhattan_distance(coord1, coord2)
+                            dist = warehouse_3d.compute_manhattan_distance_with_BFS(coord1, coord2)
                             adj_matrix[i, j] = dist
                             adj_matrix[j, i] = dist
                 else:
@@ -88,7 +88,7 @@ def update_with_inter_category_distances(named_coordinates_dict, warehouse_3d, g
 
     for i, coord1 in enumerate(coords1):
         for j, coord2 in enumerate(coords2):
-            dist = warehouse_3d.compute_manhattan_distance(coord1, coord2)
+            dist = warehouse_3d.compute_manhattan_distance_with_BFS(coord1, coord2)
             global_matrix[start1 + i, start2 + j] = dist
             global_matrix[start2 + j, start1 + i] = dist
 
