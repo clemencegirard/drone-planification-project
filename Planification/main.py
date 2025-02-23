@@ -51,4 +51,4 @@ final_adjacency_matrix_2 = main_bellman(final_adjacency_matrix)
 
 planning_drones = schedule(final_adjacency_matrix_2, coordinate_to_index, warehouse_name, warehouse_3d, 3)
 
-print(final_adjacency_matrix_2)
+print(planning_drones)

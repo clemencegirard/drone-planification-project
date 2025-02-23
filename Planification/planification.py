@@ -60,34 +60,40 @@ def create_drone_schedule(csv: pd.DataFrame, drone_number: int, warehouse: Wareh
     """Create a full schedule for a specific drone."""
     new_time = csv.loc[csv['drone'] == f'd{drone_number}']['time'].iloc[0]
     new_time = datetime.strptime(new_time, "%H:%M:%S").time()
-    df_path = pd.DataFrame(columns=['time', 'id', 'position'])
+    df_path = pd.DataFrame(columns=['time', 'task_type', 'id', 'position'])
     last_state = None
     first_iteration = True
+    object_time_treatment = timedelta(seconds=30)
 
-    for _, row in csv.loc[csv['drone'] == f'd{drone_number}', ['task_path', 'id', 'time']].iterrows():
+    for _, row in csv.loc[csv['drone'] == f'd{drone_number}', ['task_path', 'task_type', 'id', 'time']].iterrows():
         task_id = row['id']
+        task_type = row['task_type']
         positions = row['task_path']
         time_start = datetime.strptime(row['time'], "%H:%M:%S").time()
 
         if time_start > new_time:
             new_time = time_start
 
+        new_time = (datetime.combine(datetime.today(), new_time) + object_time_treatment).time()
+
         if not first_iteration:
             __, return_path = warehouse.compute_manhattan_distance_with_BFS(last_state, positions[0], True)
-            reduced_return_path = return_path[1:-1]
 
-            for pos in reduced_return_path:
+            for pos in return_path:
+
                 time_delta = compute_travel_time(pos, df_path.iloc[-1]['position'])
                 new_time = (datetime.combine(datetime.today(), new_time) + time_delta).time()
-                df_path.loc[len(df_path)] = [new_time, "", pos]
+                df_path.loc[len(df_path)] = [new_time, "Return","", pos]
+                if pos == return_path[-1]:
+                    new_time = (datetime.combine(datetime.today(), new_time) + object_time_treatment).time()
 
         for pos in positions:
             if df_path.empty:
-                df_path.loc[len(df_path)] = [time_start, task_id, pos]
+                df_path.loc[len(df_path)] = [new_time, task_type, task_id, pos]
             else:
                 time_delta = compute_travel_time(pos, df_path.iloc[-1]['position'])
                 new_time = (datetime.combine(datetime.today(), new_time) + time_delta).time()
-                df_path.loc[len(df_path)] = [new_time, task_id, pos]
+                df_path.loc[len(df_path)] = [new_time, task_type, task_id, pos]
 
         first_iteration = False
         last_state = positions[-1]
