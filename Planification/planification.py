@@ -3,7 +3,7 @@ from datetime import timedelta, datetime
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional
-from Planification.warehouse import Warehouse3D
+from warehouse import Warehouse3D
 
 
 def open_csv(csv_file_name: str) -> pd.DataFrame:
