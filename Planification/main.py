@@ -6,7 +6,7 @@ from adjacency_matrix import *
 from warehouse_builder import load_config,build_warehouse
 from bellman import main_bellman
 from task_list_generator import create_objects_in_warehouse, generate_task_list
-from planification import schedule, count_collisions, get_segments
+from planification import schedule, count_collisions, compute_cost
 
 ###############  Parameters ###################
 
@@ -50,11 +50,10 @@ save_adj_matrix(final_adjacency_matrix, warehouse_name)
 final_adjacency_matrix_2 = main_bellman(final_adjacency_matrix)
 
 planning_drones = schedule(final_adjacency_matrix_2, coordinate_to_index, warehouse_name, warehouse_3d, 3)
-print("d1:", planning_drones["d1"].iloc[10:30])
-print("d2:", planning_drones["d2"].iloc[10:30])
-print("d3:", planning_drones["d3"].iloc[10:30])
-
 
 direct_collisions_df, crossing_collisions_df = count_collisions(planning_drones)
 print("Direct collisions:", direct_collisions_df)
 print("Potential collision: ", crossing_collisions_df)
+
+cost = compute_cost(planning_drones, collision_penalty=0.0)
+print("Cost:", cost)

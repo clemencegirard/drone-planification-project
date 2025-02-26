@@ -229,3 +229,20 @@ def count_crossing_collisions(drone_data: Dict[str, pd.DataFrame]) -> pd.DataFra
 
 def count_collisions(drone_data): 
     return count_direct_collisions(drone_data), count_crossing_collisions(drone_data)
+
+def compute_cost(drone_data: Dict[str, pd.DataFrame], collision_penalty: float = 10.0) -> float:
+    """Compute cost of the total time of flight time, add a penalty weighted by the number of collision"""
+    total_flight_time = 0
+
+    for df in drone_data.values():
+        if len(df) > 1:
+            start_time = datetime.combine(datetime.today(), df.iloc[0]['time'])
+            end_time = datetime.combine(datetime.today(), df.iloc[-1]['time'])
+            total_flight_time += (end_time - start_time).total_seconds() / 60  # Time in minutes
+            print("total_flight_time:", end_time-start_time)
+
+    # Gets collisions
+    direct_collisions_df, crossing_collisions_df = count_collisions(drone_data)
+    total_collisions = len(direct_collisions_df) + len(crossing_collisions_df)
+
+    return total_flight_time + (total_collisions * collision_penalty)
