@@ -10,7 +10,7 @@ from planification import schedule, count_collisions, compute_cost
 
 ###############  Parameters ###################
 
-warehouse_name = "one_level_U_warehouse"
+warehouse_name = "warehouse1"
 n_objects = 60
 n_tasks = 120
 arrival_time_slots = [time(8,0,0), time(10,0,0)]

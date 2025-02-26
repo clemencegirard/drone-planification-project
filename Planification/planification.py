@@ -21,10 +21,10 @@ def assign_drones(csv_file: pd.DataFrame, num_drones: int) -> pd.DataFrame:
 
 
 def compute_distance(bellman_matrix: np.ndarray, position_dict: Dict[Tuple[int, int, int], int],
-                    start: List[int], end: List[int]) -> int:
+                    start: str, end: str) -> int:
     """Compute the distance between two points using the Bellman matrix."""
-    n1 = position_dict[tuple(start)] - 1
-    n2 = position_dict[tuple(end)] - 1
+    n1 = position_dict[tuple(map(int, start.split(',')))] - 1
+    n2 = position_dict[tuple(map(int, end.split(',')))] - 1
     return bellman_matrix[n1][n2]
 
 
@@ -42,15 +42,13 @@ def prepare_csv(bellman_matrix: np.ndarray, position_dict: Dict[Tuple[int, int, 
     csv_file = assign_drones(csv_file, num_drones)
 
     csv_file['task_time'] = csv_file.apply(
-        lambda row: compute_distance(bellman_matrix, position_dict, [row['row0'], row['col0'], row['height0']],
-                                     [row['row1'], row['col1'], row['height1']]),
-        axis=1
+        lambda row: compute_distance(bellman_matrix, position_dict, row['pos0'],row['pos1']), axis=1
     )
 
     csv_file[['task_time_2', 'task_path']] = csv_file.apply(
         lambda row: pd.Series(warehouse.compute_manhattan_distance_with_BFS(
-            [row['row0'], row['col0'], row['height0']],
-            [row['row1'], row['col1'], row['height1']],
+            tuple(map(int, row['pos0'].split(','))),
+            tuple(map(int, row['pos1'].split(','))),
             True
         )),
         axis=1

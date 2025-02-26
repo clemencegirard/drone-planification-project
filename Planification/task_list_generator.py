@@ -67,7 +67,7 @@ def choose_slot_and_time(times_positions: dict[time, dict[tuple[int, int, int], 
 def generate_task_list(n_tasks: int, objects: list[Object], arrival_times: list[time], departure_times: list[time], warehouse: Warehouse3D):
     """Generate a CSV file with n rows of the following format :
 
-    object_id  row0 col0 height0  row1 col1 height1
+    object_id  pos0  pos1
 
     where the object has to go from position 0 to position 1"""
 
@@ -106,7 +106,7 @@ def generate_task_list(n_tasks: int, objects: list[Object], arrival_times: list[
     with open(file_path, mode='w', newline='') as file:
         writer = csv.writer(file)
         # Header.
-        writer.writerow(["task_type", "id", "row0", "col0", "height0", "row1", "col1", "height1", "time"])
+        writer.writerow(["task_type", "id", "pos0", "pos1", "time"])
         
         for i in range(n_tasks):
             # Prevent empty list errors.
@@ -142,15 +142,14 @@ def generate_task_list(n_tasks: int, objects: list[Object], arrival_times: list[
                     object.is_on_shelf = True
                     object.move_to(final_row, final_col, final_height)
 
+            initial_pos = ",".join(map(str, (initial_row, initial_col, initial_height)))
+            final_pos = ",".join(map(str, (final_row, final_col, final_height)))
+
             row = [
                 task_type,
                 object.id,
-                initial_row,
-                initial_col,
-                initial_height,
-                final_row,
-                final_col,
-                final_height,
+                initial_pos,
+                final_pos,
                 time
             ]
             writer.writerow(row)
