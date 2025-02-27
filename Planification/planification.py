@@ -6,6 +6,7 @@ from typing import Dict, List, Tuple, Optional
 from warehouse import Warehouse3D
 import itertools
 from shapely.geometry import LineString
+import json
 
 
 def open_csv(csv_file_name: str) -> pd.DataFrame:
@@ -21,42 +22,53 @@ def assign_drones(csv_file: pd.DataFrame, num_drones: int) -> pd.DataFrame:
 
 
 def compute_distance(bellman_matrix: np.ndarray, position_dict: Dict[Tuple[int, int, int], int],
-                    start: str, end: str) -> int:
+                    start: list, end: list) -> int:
     """Compute the distance between two points using the Bellman matrix."""
-    n1 = position_dict[tuple(map(int, start.split(',')))] - 1
-    n2 = position_dict[tuple(map(int, end.split(',')))] - 1
+    n1 = position_dict[tuple(json.loads(start))] - 1
+    n2 = position_dict[tuple(json.loads(end))] - 1
+
     return bellman_matrix[n1][n2]
 
 
-def compute_travel_time(start: Tuple[int, int, int], end: Tuple[int, int, int]) -> timedelta:
+def compute_travel_time(start: Tuple[int, int, int], end: Tuple[int, int, int], drone_speed : int) -> timedelta:
     """Compute the travel time between two points."""
-    return timedelta(minutes=abs(start[0] - end[0]) + abs(start[1] - end[1]) + abs(start[2] - end[2]))
+    distance = abs(start[0] - end[0]) + abs(start[1] - end[1]) + abs(start[2] - end[2])
+    time = distance / drone_speed
+    return timedelta(minutes=time)
 
 
 def prepare_csv(bellman_matrix: np.ndarray, position_dict: Dict[Tuple[int, int, int], int],
-                csv_file_name: str, warehouse: Warehouse3D, num_drones: int) -> pd.DataFrame:
+                csv_file_name: str, warehouse: Warehouse3D, num_drones: int, drone_speed : int) -> pd.DataFrame:
     """Prepare the CSV file by sorting, assigning drones, and computing distances."""
     csv_file = open_csv(csv_file_name)
     csv_file['time'] = pd.to_datetime(csv_file['time'], format='%H:%M:%S').dt.strftime('%H:%M:%S')
     csv_file = csv_file.sort_values(by=['time'])
     csv_file = assign_drones(csv_file, num_drones)
 
-    csv_file['task_time'] = csv_file.apply(
-        lambda row: compute_distance(bellman_matrix, position_dict, row['pos0'],row['pos1']), axis=1
-    )
+    csv_file['task_distance'] = csv_file.apply(
+        lambda row: compute_distance(bellman_matrix, position_dict, row['pos0'],row['pos1']), axis=1)
 
-    csv_file[['task_time_2', 'task_path']] = csv_file.apply(
+    csv_file[['task_distance_2', 'task_path']] = csv_file.apply(
         lambda row: pd.Series(warehouse.compute_manhattan_distance_with_BFS(
-            tuple(map(int, row['pos0'].split(','))),
-            tuple(map(int, row['pos1'].split(','))),
-            True
+            tuple(json.loads(row['pos0'])),
+            tuple(json.loads(row['pos1'])),
+            return_path=True,
+            reduced=True
         )),
         axis=1
     )
+
+    csv_file['task_time'] = csv_file['task_distance'] / drone_speed
+    csv_file['task_time'] = csv_file['task_time'].apply(lambda x: timedelta(minutes=x))
+
+    csv_file['task_time_2'] = csv_file['task_distance_2'] / drone_speed
+    csv_file['task_time_2'] = csv_file['task_time_2'].apply(lambda x: timedelta(minutes=x))
+
+
     return csv_file
 
 
-def create_drone_schedule(csv: pd.DataFrame, drone_number: int, warehouse: Warehouse3D) -> pd.DataFrame:
+def create_drone_schedule(csv: pd.DataFrame, drone_number: int, warehouse: Warehouse3D, drone_speed : int) -> pd.DataFrame:
     """Create a full schedule for a specific drone."""
     new_time = csv.loc[csv['drone'] == f'd{drone_number}']['time'].iloc[0]
     new_time = datetime.strptime(new_time, "%H:%M:%S").time()
@@ -78,12 +90,11 @@ def create_drone_schedule(csv: pd.DataFrame, drone_number: int, warehouse: Wareh
         new_time = (datetime.combine(datetime.today(), new_time) + object_time_treatment).time()
 
         if not first_iteration:
-            __, return_path = warehouse.compute_manhattan_distance_with_BFS(last_state, positions[0], True)
-            reduced_return_path = return_path[1:-1]
+            __, return_path = warehouse.compute_manhattan_distance_with_BFS(last_state, positions[0], True, True)
 
             for pos in return_path:
 
-                time_delta = compute_travel_time(pos, df_path.iloc[-1]['position'])
+                time_delta = compute_travel_time(pos, df_path.iloc[-1]['position'], drone_speed)
                 new_time = (datetime.combine(datetime.today(), new_time) + time_delta).time()
                 df_path.loc[len(df_path)] = [new_time, "Return","", pos]
                 if pos == return_path[-1]:
@@ -93,7 +104,7 @@ def create_drone_schedule(csv: pd.DataFrame, drone_number: int, warehouse: Wareh
             if df_path.empty:
                 df_path.loc[len(df_path)] = [new_time, task_type, task_id, pos]
             else:
-                time_delta = compute_travel_time(pos, df_path.iloc[-1]['position'])
+                time_delta = compute_travel_time(pos, df_path.iloc[-1]['position'], drone_speed)
                 new_time = (datetime.combine(datetime.today(), new_time) + time_delta).time()
                 df_path.loc[len(df_path)] = [new_time, task_type, task_id, pos]
 
@@ -104,11 +115,11 @@ def create_drone_schedule(csv: pd.DataFrame, drone_number: int, warehouse: Wareh
 
 
 def schedule(bellman_matrix: np.ndarray, position_dict: Dict[Tuple[int, int, int], int],
-                     csv_file_name: str, warehouse: Warehouse3D, num_drones: int) -> Dict[str, pd.DataFrame]:
+                      warehouse: Warehouse3D, num_drones: int, drone_speed :int) -> Dict[str, pd.DataFrame]:
     """Prepare the schedule for all drones."""
     csv_file_name = f'TL_{warehouse.name}.csv'
-    csv = prepare_csv(bellman_matrix, position_dict, csv_file_name, warehouse, num_drones)
-    drone_schedules = {f'd{i}': create_drone_schedule(csv, i, warehouse) for i in range(1, num_drones + 1)}
+    csv = prepare_csv(bellman_matrix, position_dict, csv_file_name, warehouse, num_drones, drone_speed)
+    drone_schedules = {f'd{i}': create_drone_schedule(csv, i, warehouse, drone_speed) for i in range(1, num_drones + 1)}
 
     return drone_schedules
 
