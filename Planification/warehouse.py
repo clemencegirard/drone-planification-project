@@ -38,8 +38,9 @@ class Warehouse3D:
         if display:
             fig, axes = plt.subplots(1, self.height, figsize=(5 * self.height, 5))
             for h in range(self.height):
+
                 ax = axes[h] if self.height > 1 else axes
-                ax.imshow(self.mat[:, :, h], cmap="Greys", origin="upper")
+                ax.imshow(self.mat[:, :, h], cmap="Greys", origin="lower", vmin=0, vmax=1)
 
                 # Display orange circles for cells where self.mat == 2 (object location)
                 # and red circles for cells where self.mat == 3 (object)
@@ -110,7 +111,8 @@ class Warehouse3D:
         for h in range(height + 1):  # Includes the specified level and all below it
             for i in range(height_rect+1):
                 for j in range(width+1):
-                    self.mat[i + top_left[0], j + top_left[1], h] = 1
+                    if self.mat[i + top_left[0], j + top_left[1], h] == 0 :
+                        self.mat[i + top_left[0], j + top_left[1], h] = 1
 
     def add_storage_line(self, height: int, c1: tuple, c2: tuple):
         if not (0 <= height < self.height):  # Check bounds
@@ -291,7 +293,7 @@ class Warehouse3D:
                 nx, ny, nz = x + dx, y + dy, z + dz
 
                 if (0 <= nx < self.rows and 0 <= ny < self.cols and 0 <= nz < self.height and
-                        not visited[nx, ny, nz] and self.mat[nx, ny, nz] != 1):
+                        not visited[nx, ny, nz] and (self.mat[nx, ny, nz] == 0 or (nx, ny, nz) in [(x1, y1, z1), (x2, y2, z2)])):
                     visited[nx, ny, nz] = True
                     parent[(nx, ny, nz)] = (x, y, z)
                     queue.append((nx, ny, nz, dist + 1))

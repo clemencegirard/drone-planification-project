@@ -33,7 +33,6 @@ def build_warehouse(warehouse_name, warehouses_config):
     # Adding shelves
     logging.info("Adding shelves...")
     for shelf in warehouse_data["shelves"]:
-        # Switch correctly to next height, without including dimensions [2]
         warehouse_3d.add_shelf(shelf[0], *shelf[1:])
 
     # Adding storage lines

@@ -6,6 +6,7 @@ from datetime import time
 from pathlib import Path
 from warehouse import Warehouse3D, Object
 from warehouse_builder import *
+import json
 
 def generate_object_id(length=8):
     """Generate a random alphanumeric string of uppercase letters and digits."""
@@ -142,8 +143,8 @@ def generate_task_list(n_tasks: int, objects: list[Object], arrival_times: list[
                     object.is_on_shelf = True
                     object.move_to(final_row, final_col, final_height)
 
-            initial_pos = ",".join(map(str, (initial_row, initial_col, initial_height)))
-            final_pos = ",".join(map(str, (final_row, final_col, final_height)))
+            initial_pos = [initial_row, initial_col, initial_height]
+            final_pos = [final_row, final_col, final_height]
 
             row = [
                 task_type,
@@ -152,6 +153,7 @@ def generate_task_list(n_tasks: int, objects: list[Object], arrival_times: list[
                 final_pos,
                 time
             ]
+
             writer.writerow(row)
 
     logging.info(f"File '{file_name}' generated with {n_tasks} rows.")

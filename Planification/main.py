@@ -10,7 +10,7 @@ from planification import schedule, count_collisions, compute_cost
 
 ###############  Parameters ###################
 
-warehouse_name = "warehouse1"
+warehouse_name = "one_level_U_warehouse"
 n_objects = 60
 n_tasks = 120
 arrival_time_slots = [time(8,0,0), time(10,0,0)]
@@ -37,23 +37,21 @@ objects = create_objects_in_warehouse(n_objects, warehouse_3d)
 task_list_path = generate_task_list(n_tasks, objects, arrival_time_slots, departure_time_slots, warehouse_3d)
 
 #False by default. If True, will display the warehouse in a plot
-warehouse_3d.display(True)
+warehouse_3d.display()
 warehouse_3d.show_graph()
 
 #Generates the adjacency matrix
 final_adjacency_matrix, coordinate_to_index = main_adjacency(warehouse_3d, category_mapping)
-print(final_adjacency_matrix)
+
 #Save the adjacency matrix generated for the warehouse in the folder AMatrix as a csv file
-save_adj_matrix(final_adjacency_matrix, warehouse_name)
+save_adj_matrix(final_adjacency_matrix, warehouse_3d.name)
 
 #Call Bellman algorithm
 final_adjacency_matrix_2 = main_bellman(final_adjacency_matrix)
 
-planning_drones = schedule(final_adjacency_matrix_2, coordinate_to_index, warehouse_name, warehouse_3d, 3)
+planning_drones = schedule(final_adjacency_matrix_2, coordinate_to_index, warehouse_3d, num_drones=3, drone_speed=2)
 
 direct_collisions_df, crossing_collisions_df = count_collisions(planning_drones)
-print("Direct collisions:", direct_collisions_df)
-print("Potential collision: ", crossing_collisions_df)
 
-cost = compute_cost(planning_drones, collision_penalty=0.0)
+cost = compute_cost(planning_drones, collision_penalty=1000)
 print("Cost:", cost)
