@@ -10,7 +10,7 @@ from planification import schedule, count_collisions, compute_cost
 
 ###############  Parameters ###################
 
-warehouse_name = "one_level_U_warehouse"
+warehouse_name = "intermediate_warehouse"
 n_objects = 60
 n_tasks = 120
 arrival_time_slots = [time(8,0,0), time(10,0,0)]
@@ -37,7 +37,7 @@ objects = create_objects_in_warehouse(n_objects, warehouse_3d)
 task_list_path = generate_task_list(n_tasks, objects, arrival_time_slots, departure_time_slots, warehouse_3d)
 
 #False by default. If True, will display the warehouse in a plot
-warehouse_3d.display()
+warehouse_3d.display(True)
 warehouse_3d.show_graph()
 
 #Generates the adjacency matrix
@@ -47,11 +47,12 @@ final_adjacency_matrix, coordinate_to_index = main_adjacency(warehouse_3d, categ
 save_adj_matrix(final_adjacency_matrix, warehouse_3d.name)
 
 #Call Bellman algorithm
-final_adjacency_matrix_2 = main_bellman(final_adjacency_matrix)
+# final_adjacency_matrix_2 = main_bellman(final_adjacency_matrix)
 
-planning_drones = schedule(final_adjacency_matrix_2, coordinate_to_index, warehouse_3d, num_drones=3, drone_speed=2)
+planning_drones = schedule(final_adjacency_matrix, coordinate_to_index, warehouse_3d, num_drones=3, drone_speed=2)
 
 direct_collisions_df, crossing_collisions_df = count_collisions(planning_drones)
 
 cost = compute_cost(planning_drones, collision_penalty=1000)
+
 print("Cost:", cost)

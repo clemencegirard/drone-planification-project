@@ -241,13 +241,6 @@ class Warehouse3D:
 
             return plt.show()
 
-    from collections import deque
-    import numpy as np
-    import logging
-
-    class WarehouseError(Exception):
-        pass
-
     def compute_manhattan_distance_with_BFS(self, c1: tuple, c2: tuple, return_path: bool = False, reduced : bool = True):
         x1, y1, z1 = c1
         x2, y2, z2 = c2
@@ -322,6 +315,14 @@ class Warehouse3D:
         reduced_path.append(path_list[-1])
 
         return reduced_path
+
+    def get_charge_location(self):
+        shape = self.mat.shape
+        for x in range(shape[0]):
+            for y in range(shape[1]):
+                for z in range(shape[2]):
+                    if self.mat[x, y, z] == 7:
+                        return (x, y, z)
 
 class Object:
     def __init__(self, id: str, is_on_shelf: bool, row: int, col: int, height: int):
