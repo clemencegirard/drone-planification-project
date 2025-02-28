@@ -164,7 +164,7 @@
       "storage_lines": {
         "horizontal": [
           [2, [2, 2], [2, 12]],
-          [2, [4, 4], [4, 10]],
+          [2, [4, 5], [4, 9]],
           [2, [12, 10], [12, 12]],
           [2, [12, 2], [12, 4]]
         ],
@@ -179,7 +179,7 @@
       "start_mat": [[14,2,0]],
       "finish_mat": [[14,4,0]],
       "charging_station": [[14,0,0]],
-      "checkpoints": [],
+      "checkpoints": [[[14,14,0],0]],
       "checkpoint_connection": []
     }
   },
