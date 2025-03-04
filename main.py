@@ -2,11 +2,12 @@
 
 from datetime import time
 import random
-from adjacency_matrix import *
-from warehouse_builder import load_config,build_warehouse
-from bellman import main_bellman
-from task_list_generator import create_objects_in_warehouse, generate_task_list
-from planification import schedule, count_collisions, compute_cost
+from Planification.adjacency_matrix import *
+from Planification.warehouse_builder import load_config,build_warehouse
+from Planification.task_list_generator import create_objects_in_warehouse, generate_task_list
+from Planification.planification import schedule
+from Evitement.avoidance import count_collisions, compute_cost
+from Evitement.optimisation import find_optimal_solution
 
 ###############  Parameters ###################
 
@@ -31,7 +32,6 @@ warehouses_config, category_mapping = load_config()
 warehouse_3d = build_warehouse(warehouse_name, warehouses_config)
 
 objects = create_objects_in_warehouse(n_objects, warehouse_3d)
-# objects =[]
 
 # Build the list of tasks to accomplish during the day.
 task_list_path = generate_task_list(n_tasks, objects, arrival_time_slots, departure_time_slots, warehouse_3d)
@@ -49,10 +49,28 @@ save_adj_matrix(final_adjacency_matrix, warehouse_3d.name)
 #Call Bellman algorithm
 # final_adjacency_matrix_2 = main_bellman(final_adjacency_matrix)
 
+# Draw a first naive planning, that minimizes the total flight duration.
 planning_drones = schedule(final_adjacency_matrix, coordinate_to_index, warehouse_3d, num_drones=3, drone_speed=2)
 
-direct_collisions_df, crossing_collisions_df = count_collisions(planning_drones)
+print(planning_drones)
 
-cost = compute_cost(planning_drones, collision_penalty=1000)
+# Check if it respects the condition of no collisions.
+direct_collisions_df, calculated_collisions_df = count_collisions(planning_drones)
+print("Direct collisions:", direct_collisions_df)
+print("Calculated collision: ", calculated_collisions_df)
 
+# Compute its cost.
+cost = compute_cost(planning_drones, collision_penalty=0.0)
 print("Cost:", cost)
+
+# Use simulated annealing to find a solution that optimizes total flight duration while respecting the conditions.
+final_planning, final_cost, respect_constraints = find_optimal_solution(planning_drones, 20, 0.1, 0.9, 20, 5)
+
+print("Final planning : ", final_planning)
+print("Final cost : ", final_cost)
+print("Respect constraints : ", respect_constraints)
+
+if not respect_constraints :
+    direct_collisions_df, calculated_collisions_df = count_collisions(final_planning)
+    print("Direct collisions:", direct_collisions_df)
+    print("Calculated collision: ", calculated_collisions_df)
