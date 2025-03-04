@@ -4,7 +4,7 @@ from collections import deque
 import logging
 from pathlib import Path
 import networkx as nx
-from typing import Dict, List, Tuple, Optional
+from typing import List, Tuple
 
 # Logs configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
