@@ -21,15 +21,15 @@ def get_segments(df):
         
             t1 = datetime.combine(datetime.today(), row1['time'])
             t2 = datetime.combine(datetime.today(), row2['time'])
-        segments.append(((x1, y1, t1), (x2, y2, t2)))  
+        segments.append(((x1, y1, z1, t1), (x2, y2, z2, t2)))  
 
     return segments
 
 def interpolate_positions(p1, p2, q1, q2):
-    x1, y1, t1 = p1
-    x2, y2, t2 = p2
-    x3, y3, t3 = q1
-    x4, y4, t4 = q2
+    x1, y1, z1, t1 = p1
+    x2, y2, z2, t2 = p2
+    x3, y3, z3, t3 = q1
+    x4, y4, z4, t4 = q2
 
     common_start = max(t1, t3)
     common_end = min(t2, t4)
@@ -45,11 +45,13 @@ def interpolate_positions(p1, p2, q1, q2):
         time = common_start + pd.Timedelta(minutes=step)
         pos1_x = round(x1 + (x2 - x1) * (time - t1).total_seconds() / (t2 - t1).total_seconds())
         pos1_y = round(y1 + (y2 - y1) * (time - t1).total_seconds() / (t2 - t1).total_seconds())
+        pos1_z = round(z1 + (z2 - z1) * (time - t1).total_seconds() / (t2 - t1).total_seconds())
 
         pos2_x = round(x3 + (x4 - x3) * (time - t3).total_seconds() / (t4 - t3).total_seconds())
         pos2_y = round(y3 + (y4 - y3) * (time - t3).total_seconds() / (t4 - t3).total_seconds())
+        pos2_z = round(z3 + (z4 - z3) * (time - t3).total_seconds() / (t4 - t3).total_seconds())
 
-        interpolated_positions.append((time, (pos1_x, pos1_y), (pos2_x, pos2_y)))
+        interpolated_positions.append((time, (pos1_x, pos1_y, pos1_z), (pos2_x, pos2_y, pos2_z)))
 
     return interpolated_positions
 
@@ -87,18 +89,18 @@ def count_calculated_collisions(drone_data: Dict[str, pd.DataFrame]) -> pd.DataF
 
         for (p1, p2) in segments1:
             for (q1, q2) in segments2:
-                x1, y1, t1 = p1
-                x2, y2, t2 = p2
-                x3, y3, t3 = q1
-                x4, y4, t4 = q2
+                x1, y1, z1, t1 = p1
+                x2, y2, z2, t2 = p2
+                x3, y3, z3, t3 = q1
+                x4, y4, z4, t4 = q2
 
                 # 1 - Check for same time interval
                 if max(t1, t3) > min(t2, t4):
                     continue  # No time intersection
 
                 # 2 - Check for trajectories intersection
-                traj1 = LineString([(x1, y1), (x2, y2)])
-                traj2 = LineString([(x3, y3), (x4, y4)])
+                traj1 = LineString([(x1, y1, z1), (x2, y2, z2)])
+                traj2 = LineString([(x3, y3, z3), (x4, y4, z4)])
 
                 if not traj1.intersects(traj2):
                     continue  # No spatial intersection trajectories
@@ -126,11 +128,32 @@ def compute_cost(drone_data: Dict[str, pd.DataFrame], collision_penalty: float =
     total_flight_time = 0
 
     for df in drone_data.values():
-        if len(df) > 1:
-            start_time = datetime.combine(datetime.today(), df.iloc[0]['time'])
-            end_time = datetime.combine(datetime.today(), df.iloc[-1]['time'])
-            total_flight_time += (end_time - start_time).total_seconds() / 60  # Time in minutes
+    #     if len(df) > 1:
+    #         start_time = datetime.combine(datetime.today(), df.iloc[0]['time'])
+    #         end_time = datetime.combine(datetime.today(), df.iloc[-1]['time'])
+    #         total_flight_time += (end_time - start_time).total_seconds() / 60  # Time in minutes
 
+        total_time = 0
+        last_valid_time = None  # Dernier instant hors recharge
+        in_recharge = False  # Indicateur si le drone est en recharge
+        
+        df = df.copy()
+        df['time'] = pd.to_datetime(df['time'], format='%H:%M:%S')  # Conversion en datetime
+
+        for i, row in df.iterrows():
+            if row['task_type'] == 'RC':  
+                in_recharge = True  # Début de recharge, on stoppe le comptage
+            elif in_recharge and row['task_type'] != 'RC':  
+                # Fin de recharge détectée, on reprend le comptage
+                in_recharge = False
+                last_valid_time = row['time']
+            elif not in_recharge and last_valid_time is not None:
+                # Accumulation du temps uniquement hors recharge
+                total_time += (row['time'] - last_valid_time).total_seconds() / 60
+                last_valid_time = row['time']
+
+        total_flight_time += total_time
+    
     # Gets collisions
     direct_collisions_df, crossing_collisions_df = count_collisions(drone_data)
     total_collisions = len(direct_collisions_df) + len(crossing_collisions_df)
