@@ -8,6 +8,7 @@ from Planification.task_list_generator import create_objects_in_warehouse, gener
 from Planification.planification import schedule
 from Evitement.avoidance import count_collisions, compute_cost
 from Evitement.optimisation import find_optimal_solution
+from Visualisation.animation import launch_visualisation_plotly
 
 ###############  Parameters ###################
 
@@ -37,7 +38,7 @@ objects = create_objects_in_warehouse(n_objects, warehouse_3d)
 task_list_path = generate_task_list(n_tasks, objects, arrival_time_slots, departure_time_slots, warehouse_3d)
 
 #False by default. If True, will display the warehouse in a plot
-warehouse_3d.display(True)
+warehouse_3d.display()
 warehouse_3d.show_graph()
 
 #Generates the adjacency matrix
@@ -51,6 +52,9 @@ save_adj_matrix(final_adjacency_matrix, warehouse_3d.name)
 
 # Draw a first naive planning, that minimizes the total flight duration.
 planning_drones = schedule(final_adjacency_matrix, coordinate_to_index, warehouse_3d, num_drones=3, drone_speed=2)
+
+launch_visualisation_plotly(planning_drones,warehouse_3d)
+
 
 print(planning_drones)
 
