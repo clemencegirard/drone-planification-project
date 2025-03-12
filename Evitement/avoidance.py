@@ -11,7 +11,7 @@ def get_segments(df):
     for i in range(len(df) - 1):
         row1, row2 = df.iloc[i], df.iloc[i + 1]
         
-        # Vérification du type de la colonne position
+        # Check column type
         if isinstance(row1['position'], str):
             x1, y1, z1 = eval(row1['position'])
             x2, y2, z2 = eval(row2['position'])
@@ -51,7 +51,7 @@ def interpolate_positions(p1, p2, q1, q2):
         pos2_y = round(y3 + (y4 - y3) * (time - t3).total_seconds() / (t4 - t3).total_seconds())
         pos2_z = round(z3 + (z4 - z3) * (time - t3).total_seconds() / (t4 - t3).total_seconds())
 
-        interpolated_positions.append((time, (pos1_x, pos1_y, pos1_z), (pos2_x, pos2_y, pos2_z)))
+        interpolated_positions.append((time, t1, t3, (pos1_x, pos1_y, pos1_z), (pos2_x, pos2_y, pos2_z)))
 
     return interpolated_positions
 
@@ -108,15 +108,15 @@ def count_calculated_collisions(drone_data: Dict[str, pd.DataFrame]) -> pd.DataF
                 # 3 - Interpolate drone position at every minute only when suspect time interval
                 interpolated_points = interpolate_positions(p1, p2, q1, q2)
 
-                for time, pos1, pos2 in interpolated_points:
+                for time, start_time1, start_time2, pos1, pos2 in interpolated_points:
                     #Check for crossing trajectories
-                    prev_index = interpolated_points.index((time, pos1, pos2)) - 1
+                    prev_index = interpolated_points.index((time, start_time1, start_time2, pos1, pos2)) - 1
                     if prev_index >= 0:
-                        prev_time, prev_pos1, prev_pos2 = interpolated_points[prev_index]
+                        _, prev_time1, prev_time2, prev_pos1, prev_pos2 = interpolated_points[prev_index]
                         if prev_pos1 == pos2 and prev_pos2 == pos1:
-                            calculated_collisions.append((prev_time, time, prev_pos1, prev_pos2, d1, d2))
+                            calculated_collisions.append((prev_time1, prev_time2, time, prev_pos1, prev_pos2, d1, d2))
 
-    calculated_collisions_df = pd.DataFrame(calculated_collisions, columns=["start_time", "end_time", "pos1", "pos2", "drone1", "drone2"])
+    calculated_collisions_df = pd.DataFrame(calculated_collisions, columns=["start_time1", "start_time2", "end_time", "pos1", "pos2", "drone1", "drone2"])
     
     return calculated_collisions_df
 
