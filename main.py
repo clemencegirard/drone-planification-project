@@ -64,15 +64,15 @@ print("Direct collisions:", direct_collisions_df)
 print("Calculated collision: ", calculated_collisions_df)
 
 # Compute its cost.
-cost = compute_cost(planning_drones, collision_penalty=0.0)
+cost = compute_cost(planning_drones, collision_penalty=10000)
 print("Cost:", cost)
 
-# # Use simulated annealing to find a solution that optimizes total flight duration while respecting the conditions.
-# final_planning, final_cost, respect_constraints = find_optimal_solution(planning_drones, 20, 0.1, 0.9, 20, 5)
+# Use simulated annealing to find a solution that optimizes total flight duration while respecting the conditions.
+final_planning, final_cost, respect_constraints = find_optimal_solution(planning_drones, 2, 20, 0.1, 0.9, 20, 1)
 
 print("Final planning : ", final_planning)
 print("Final cost : ", final_cost)
-print("Respect constraints : ", respect_constraints)
+print("Respect constraints: ", respect_constraints)
 
 if not respect_constraints :
     direct_collisions_df, calculated_collisions_df = count_collisions(final_planning)
