@@ -3,9 +3,8 @@ import random
 import string
 import copy
 from datetime import time
-from pathlib import Path
-from Planification.warehouse import Warehouse3D, Object
-from Planification.warehouse_builder import *
+from Warehouse.warehouse import Object
+from Warehouse.warehouse_builder import *
 
 def generate_object_id(length=8):
     """Generate a random alphanumeric string of uppercase letters and digits."""

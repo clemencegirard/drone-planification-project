@@ -3,16 +3,18 @@
 from datetime import time
 import random
 from Planification.adjacency_matrix import *
-from Planification.warehouse_builder import load_config,build_warehouse
+from Warehouse.warehouse_builder import load_config_warehouse,build_warehouse
 from Planification.task_list_generator import create_objects_in_warehouse, generate_task_list
 from Planification.planification import schedule
 from Evitement.avoidance import count_collisions, compute_cost
 from Evitement.optimisation import find_optimal_solution
 from Visualisation.animation import launch_visualisation_plotly
+from Planification.planification import load_config_planning
 
 ###############  Parameters ###################
 
 warehouse_name = "intermediate_warehouse"
+planning_config_name = "planning_test_1"
 n_objects = 60
 n_tasks = 120
 arrival_time_slots = [time(8,0,0), time(10,0,0)]
@@ -26,8 +28,9 @@ seed = 29
 np.random.seed(seed)
 random.seed(seed)
 
-# Load config
-warehouses_config, category_mapping = load_config()
+# Load configs
+warehouses_config, category_mapping = load_config_warehouse()
+planning_config = load_config_planning(planning_config_name)
 
 # Build warehouse
 warehouse_3d = build_warehouse(warehouse_name, warehouses_config)
@@ -51,10 +54,9 @@ save_adj_matrix(final_adjacency_matrix, warehouse_3d.name)
 # final_adjacency_matrix_2 = main_bellman(final_adjacency_matrix)
 
 # Draw a first naive planning, that minimizes the total flight duration.
-planning_drones = schedule(final_adjacency_matrix, coordinate_to_index, warehouse_3d, num_drones=3, drone_speed=2)
+planning_drones = schedule(final_adjacency_matrix, coordinate_to_index, warehouse_3d, planning_config)
 
 launch_visualisation_plotly(planning_drones,warehouse_3d)
-
 
 print(planning_drones)
 
@@ -68,7 +70,7 @@ cost = compute_cost(planning_drones, collision_penalty=0.0)
 print("Cost:", cost)
 
 # # Use simulated annealing to find a solution that optimizes total flight duration while respecting the conditions.
-# final_planning, final_cost, respect_constraints = find_optimal_solution(planning_drones, 20, 0.1, 0.9, 20, 5)
+final_planning, final_cost, respect_constraints = find_optimal_solution(planning_drones, 20, 0.1, 0.9, 20, 5)
 
 print("Final planning : ", final_planning)
 print("Final cost : ", final_cost)

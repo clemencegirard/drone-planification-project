@@ -1,9 +1,9 @@
 import json
 from pathlib import Path
-from Planification.warehouse import Warehouse3D
+from Warehouse.warehouse import Warehouse3D
 import logging
 
-def load_config(config_path="config_warehouses.json"):
+def load_config_warehouse(config_path="config_warehouses.json"):
     config_file = Path(__file__).parent / config_path
     with open(config_file, "r") as f:
         config = json.load(f)
