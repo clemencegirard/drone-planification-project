@@ -54,7 +54,7 @@ save_adj_matrix(final_adjacency_matrix, warehouse_3d.name)
 # final_adjacency_matrix_2 = main_bellman(final_adjacency_matrix)
 
 # Draw a first naive planning, that minimizes the total flight duration.
-planning_drones = schedule(final_adjacency_matrix, coordinate_to_index, warehouse_3d, planning_config)
+planning_drones = schedule(warehouse_3d, planning_config)
 
 launch_visualisation_plotly(planning_drones,warehouse_3d)
 

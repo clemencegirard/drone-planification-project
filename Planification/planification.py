@@ -300,7 +300,8 @@ def drone_initial_selection(drone_last_position: Dict[str, Tuple[int, int, int]]
     best_drone = None
     best_time = timedelta.max
     full_time = row['full_time'] + 2 * object_time_treatment
-    task_start_time = datetime.strptime(row['time'], '%H:%M:%S')
+    task_start_time = datetime.strptime(row['time'], '%H:%M:%S').time()
+    task_start_time = datetime.combine(datetime.today(), task_start_time)
     task_path_start = row['task_path'][0]
 
     for drone_nb, last_pos in drone_last_position.items():
@@ -316,8 +317,7 @@ def drone_initial_selection(drone_last_position: Dict[str, Tuple[int, int, int]]
 
         if drone_battery_seconds >= total_battery_required and (drone_battery_seconds - total_battery_required) > lower_threshold*drone_battery_seconds:
             # Determine the next availability of the drone
-            drone_available_time = max(drone_time_follow[drone_nb], task_start_time) if drone_time_follow[
-                drone_nb] else task_start_time
+            drone_available_time = max(drone_time_follow[drone_nb], task_start_time) if drone_time_follow[drone_nb] else task_start_time
 
             # Convert to timedelta for comparison
             task_start_delta = timedelta(hours=task_start_time.hour, minutes=task_start_time.minute,
