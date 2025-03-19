@@ -25,7 +25,7 @@ def simulated_annealing(planning: Dict[str, pd.DataFrame], t_initial: float = 10
     while temp > t_freeze :
         # Explore solutions at constant temperature
         for _ in range(iterations_per_temp) :
-            direct_collisions, calculated_collisions = count_collisions(current_planning)
+            direct_collisions, calculated_collisions = count_direct_collisions(current_planning), len(count_calculated_collisions(current_planning))
 
             if not (direct_collisions.empty and calculated_collisions.empty) :
                 new_planning = fix_collisions(planning, direct_collisions, calculated_collisions)

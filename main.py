@@ -6,7 +6,7 @@ from Planification.adjacency_matrix import *
 from Warehouse.warehouse_builder import load_config_warehouse,build_warehouse
 from Planification.task_list_generator import create_objects_in_warehouse, generate_task_list
 from Planification.planification import schedule
-from Evitement.avoidance import count_collisions, compute_cost
+from Evitement.avoidance import count_calculated_collisions, count_direct_collisions, compute_cost
 from Evitement.optimisation import find_optimal_solution
 from Visualisation.animation import launch_visualisation_plotly
 from Planification.planification import load_config_planning
@@ -41,7 +41,7 @@ objects = create_objects_in_warehouse(n_objects, warehouse_3d)
 task_list_path = generate_task_list(n_tasks, objects, arrival_time_slots, departure_time_slots, warehouse_3d)
 
 #False by default. If True, will display the warehouse in a plot
-warehouse_3d.display()
+warehouse_3d.display(True)
 warehouse_3d.show_graph()
 
 #Generates the adjacency matrix
@@ -61,12 +61,12 @@ launch_visualisation_plotly(planning_drones,warehouse_3d)
 print(planning_drones)
 
 # Check if it respects the condition of no collisions.
-direct_collisions_df, calculated_collisions_df = count_collisions(planning_drones)
+direct_collisions_df, calculated_collisions_df = count_direct_collisions(planning_drones), count_calculated_collisions(planning_drones)
 print("Direct collisions:", direct_collisions_df)
 print("Calculated collision: ", calculated_collisions_df)
 
 # Compute its cost.
-cost = compute_cost(planning_drones, collision_penalty=0.0)
+cost = compute_cost(planning_drones, threshold = 2, collision_penalty = 100.0, avoidance_penalty= 10.0, total_duration_penalty = 1.0)
 print("Cost:", cost)
 
 # # # Use simulated annealing to find a solution that optimizes total flight duration while respecting the conditions.

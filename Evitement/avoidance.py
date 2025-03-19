@@ -19,8 +19,8 @@ def get_segments(df):
             x1, y1, z1 = row1['position']
             x2, y2, z2 = row2['position']
         
-            t1 = datetime.combine(datetime.today(), row1['time'])
-            t2 = datetime.combine(datetime.today(), row2['time'])
+            t1 = datetime.combine(datetime.today(), row1['time'].time())
+            t2 = datetime.combine(datetime.today(), row2['time'].time())
         segments.append(((x1, y1, z1, t1), (x2, y2, z2, t2)))  
 
     return segments
@@ -170,7 +170,7 @@ def compute_cost(drone_data: Dict[str, pd.DataFrame], threshold: int, collision_
                 total_time += (row['time'] - last_valid_time).total_seconds() / 60
                 last_valid_time = row['time']
 
-        total_flight_time += total_time
+        total_flight_time += float(total_time)
     
     # Gets collisions
     direct_collisions_df, crossing_collisions_df = count_direct_collisions(drone_data), count_calculated_collisions(drone_data)
@@ -183,7 +183,7 @@ def compute_cost(drone_data: Dict[str, pd.DataFrame], threshold: int, collision_
     # Gets total duration to complete today's tasks
     start_times = [datetime.strptime(str(t), "%H:%M:%S") if isinstance(t, str) else t for t in start_times]
     end_times = [datetime.strptime(str(t), "%H:%M:%S") if isinstance(t, str) else t for t in end_times]
-    total_duration = max(end_times) - min(start_times)
+    total_duration = (max(end_times) - min(start_times)).total_seconds()
 
     return total_flight_time + (total_collisions * collision_penalty) + (number_near_misses * avoidance_penalty) + (total_duration * total_duration_penalty)
 
