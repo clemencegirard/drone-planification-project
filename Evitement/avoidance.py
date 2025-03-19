@@ -105,7 +105,7 @@ def count_calculated_collisions(drone_data: Dict[str, pd.DataFrame]) -> pd.DataF
                 if not traj1.intersects(traj2):
                     continue  # No spatial intersection trajectories
 
-                # 3 - Interpolate drone position at every minute only when suspect time interval
+                # 3 - Interpolate drone position at every minute only when suspect time interval and trajectories cross
                 interpolated_points = interpolate_positions(p1, p2, q1, q2)
 
                 for time, start_time1, start_time2, pos1, pos2 in interpolated_points:
@@ -116,49 +116,76 @@ def count_calculated_collisions(drone_data: Dict[str, pd.DataFrame]) -> pd.DataF
                         if prev_pos1 == pos2 and prev_pos2 == pos1:
                             calculated_collisions.append((prev_time1, prev_time2, time, prev_pos1, prev_pos2, d1, d2))
 
-    calculated_collisions_df = pd.DataFrame(calculated_collisions, columns=["start_time1", "start_time2", "end_time", "pos1", "pos2", "drone1", "drone2"])
+    calculated_collisions_df = pd.DataFrame(calculated_collisions, columns=["start_time1", "start_time2", "collision_time", "pos1", "pos2", "drone1", "drone2"])
     
     return calculated_collisions_df
 
-def count_collisions(drone_data): 
-    return count_direct_collisions(drone_data), count_calculated_collisions(drone_data)
+def detect_near_misses(drone_data, threshold=2):
+    """Detects when drones are dangerously close accordingly to our threshold."""
+    all_segments = {drone: get_segments(df) for drone, df in drone_data.items()}
+    near_misses = []
 
-def compute_cost(drone_data: Dict[str, pd.DataFrame], collision_penalty: float = 10.0) -> float:
+    for (drone1, segments1), (drone2, segments2) in itertools.combinations(all_segments.items(), 2):
+        for seg1 in segments1:
+            for seg2 in segments2:
+                interpolated_positions = interpolate_positions(*seg1, *seg2)
+
+                for time, _, _, pos1, pos2 in interpolated_positions:
+                    distance = sum(abs(a - b) for a, b in zip(pos1, pos2))
+
+                    if distance <= threshold:
+                        near_misses.append((time, drone1, drone2, pos1, pos2, distance))
+
+    near_misses_df = pd.DataFrame(near_misses, columns=["time", "drone1", "drone2", "pos1", "pos2", "distance"])
+
+    return near_misses_df
+
+def compute_cost(drone_data: Dict[str, pd.DataFrame], threshold: int, collision_penalty: float = 100.0, avoidance_penalty: float = 10.0, total_duration_penalty: float = 1.0) -> float:
     """Compute cost of the total time of flight time, add a penalty weighted by the number of collision"""
     total_flight_time = 0
+    start_times = []
+    end_times = []
 
     for df in drone_data.values():
-    #     if len(df) > 1:
-    #         start_time = datetime.combine(datetime.today(), df.iloc[0]['time'])
-    #         end_time = datetime.combine(datetime.today(), df.iloc[-1]['time'])
-    #         total_flight_time += (end_time - start_time).total_seconds() / 60  # Time in minutes
 
         total_time = 0
-        last_valid_time = None  # Dernier instant hors recharge
-        in_recharge = False  # Indicateur si le drone est en recharge
+        last_valid_time = None  # Last time not charging
+        in_recharge = False
         
         df = df.copy()
-        df['time'] = pd.to_datetime(df['time'], format='%H:%M:%S')  # Conversion en datetime
+        df['time'] = pd.to_datetime(df['time'], format='%H:%M:%S')
+
+        start_times.append(df.iloc[0]["time"])  # First task start time
+        end_times.append(df.iloc[-1]["time"])   # Last task end time
 
         for i, row in df.iterrows():
             if row['task_type'] == 'RC':  
-                in_recharge = True  # Début de recharge, on stoppe le comptage
+                in_recharge = True  # Start charging, we stop the count
             elif in_recharge and row['task_type'] != 'RC':  
-                # Fin de recharge détectée, on reprend le comptage
+                # Drone leaves the charging station, counter starts back
                 in_recharge = False
                 last_valid_time = row['time']
             elif not in_recharge and last_valid_time is not None:
-                # Accumulation du temps uniquement hors recharge
+                # Sum up time actually flying
                 total_time += (row['time'] - last_valid_time).total_seconds() / 60
                 last_valid_time = row['time']
 
         total_flight_time += total_time
     
     # Gets collisions
-    direct_collisions_df, crossing_collisions_df = count_collisions(drone_data)
+    direct_collisions_df, crossing_collisions_df = count_direct_collisions(drone_data), count_calculated_collisions(drone_data)
     total_collisions = len(direct_collisions_df) + len(crossing_collisions_df)
 
-    return total_flight_time + (total_collisions * collision_penalty)
+    # Gets near misses
+    near_misses = detect_near_misses(drone_data, threshold)
+    number_near_misses = len(near_misses)
+
+    # Gets total duration to complete today's tasks
+    start_times = [datetime.strptime(str(t), "%H:%M:%S") if isinstance(t, str) else t for t in start_times]
+    end_times = [datetime.strptime(str(t), "%H:%M:%S") if isinstance(t, str) else t for t in end_times]
+    total_duration = max(end_times) - min(start_times)
+
+    return total_flight_time + (total_collisions * collision_penalty) + (number_near_misses * avoidance_penalty) + (total_duration * total_duration_penalty)
 
 def fix_collisions(planning: Dict[str, pd.DataFrame], direct_collisions: pd.DataFrame, calculated_collisions: pd.DataFrame):
     new_planning = planning.copy()
