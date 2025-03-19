@@ -51,7 +51,7 @@ save_adj_matrix(final_adjacency_matrix, warehouse_3d.name)
 # final_adjacency_matrix_2 = main_bellman(final_adjacency_matrix)
 
 # Draw a first naive planning, that minimizes the total flight duration.
-planning_drones = schedule(final_adjacency_matrix, coordinate_to_index, warehouse_3d, num_drones=3, drone_speed=2)
+planning_drones = schedule(final_adjacency_matrix, coordinate_to_index, warehouse_3d, num_drones=3, drone_speed=1)
 
 launch_visualisation_plotly(planning_drones,warehouse_3d)
 
@@ -67,14 +67,14 @@ print("Calculated collision: ", calculated_collisions_df)
 cost = compute_cost(planning_drones, collision_penalty=0.0)
 print("Cost:", cost)
 
-# # Use simulated annealing to find a solution that optimizes total flight duration while respecting the conditions.
-# final_planning, final_cost, respect_constraints = find_optimal_solution(planning_drones, 20, 0.1, 0.9, 20, 5)
+# # # Use simulated annealing to find a solution that optimizes total flight duration while respecting the conditions.
+# # final_planning, final_cost, respect_constraints = find_optimal_solution(planning_drones, 20, 0.1, 0.9, 20, 5)
 
-print("Final planning : ", final_planning)
-print("Final cost : ", final_cost)
-print("Respect constraints : ", respect_constraints)
+# print("Final planning : ", final_planning)
+# print("Final cost : ", final_cost)
+# print("Respect constraints : ", respect_constraints)
 
-if not respect_constraints :
-    direct_collisions_df, calculated_collisions_df = count_collisions(final_planning)
-    print("Direct collisions:", direct_collisions_df)
-    print("Calculated collision: ", calculated_collisions_df)
+# if not respect_constraints :
+#     direct_collisions_df, calculated_collisions_df = count_collisions(final_planning)
+#     print("Direct collisions:", direct_collisions_df)
+#     print("Calculated collision: ", calculated_collisions_df)
