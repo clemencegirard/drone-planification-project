@@ -160,53 +160,76 @@ def compute_cost(drone_data: Dict[str, pd.DataFrame], collision_penalty: float =
 
     return total_flight_time + (total_collisions * collision_penalty)
 
-def fix_collisions(planning: Dict[str, pd.DataFrame], direct_collisions: pd.DataFrame, calculated_collisions: pd.DataFrame):
+def make_new_planning(planning: Dict[str, pd.DataFrame], drone_speed: int):
+    _, calculated_collisions = count_collisions(planning)
+    new_planning = fix_calculated_collisions(planning, calculated_collisions, drone_speed)
+    return new_planning
+
+def fix_calculated_collisions(planning: Dict[str, pd.DataFrame], calculated_collisions: pd.DataFrame, drone_speed : int):
     new_planning = planning.copy()
 
-    # Fix direct collisions
-    for _, collision in direct_collisions.iterrows():
-        for drone in collision['drones'][1:]:
-            # Change the time or the position to avoid the collision
-            original_time = collision['time']
-            new_time_delta = timedelta(minutes=random.uniform(-1, 1))
-            new_time = (datetime.combine(datetime.today(), original_time) + new_time_delta).time()
-
-            # Vérifiez que la condition correspond à au moins une ligne
-            matching_indices = new_planning[drone]['time'] == original_time
-            if matching_indices.any():
-                new_planning[drone].loc[matching_indices, 'time'] = new_time
-
-    # Fix crossing collisions
+    # Fix calculated collisions
     for _, collision in calculated_collisions.iterrows():
-        drone1 = collision['drone1']
-        # Change the position of one of the drones to avoid the collision
-        new_position1 = (collision['pos1'][0] + random.uniform(-1, 1),
-                         collision['pos1'][1] + random.uniform(-1, 1))
+        # The lane on which the collison will take place.
+        if collision['pos1'][0] == collision['pos2'][0]:
+            dimension_index = 0
+        else :
+            dimension_index = 1
+        # Add new positions to one of the drones' trajectory to avoid the collision
+        drone = collision['drone1']
+        start_pos = collision['pos1']
+        start_pos_time = collision['start_time1']
 
-        # Vérifiez que la condition correspond à au moins une ligne
-        matching_indices = new_planning[drone1]['time'] == collision['start_time']
-        if matching_indices.any():
-            new_planning[drone1].loc[matching_indices, 'position'] = new_position1
+        # Bypass the collision
+        new_planning[drone] = bypass_obstacle(new_planning[drone], start_pos, start_pos_time, dimension_index, drone_speed)
 
     return new_planning
 
-def make_new_planning(planning: Dict[str, pd.DataFrame]):
-    new_planning = planning.copy()
+def bypass_obstacle(planning: pd.DataFrame, start_pos: tuple[int, int, int], start_pos_time: str, dimension_index: int, drone_speed: int) :
+    # Find the index of the start position
+    start_pos_time = start_pos_time.time()
+    start_pos_index = planning[planning['time'] == start_pos_time].index
+    start_pos_index = int(start_pos_index[0])
 
-    for drone, df in new_planning.items():
-        for index, row in df.iterrows():
-            if random.random() < 0.1:  # 10% de chance de modifier une ligne
-                # Modifier l'heure de passage
-                original_time = row['time']
-                new_time_delta = timedelta(minutes=random.uniform(-1, 1))
-                new_time = (datetime.combine(datetime.today(), original_time) + new_time_delta).time()
-                new_planning[drone].loc[index, 'time'] = new_time
+    # Get the end position
+    end_pos = planning.iloc[start_pos_index+1]['position']
+    # Random offset to move on the next line.
+    offset = random.choice([-1, 1])
 
-                # Modifier la position
-                new_position = (row['position'][0] + random.uniform(-1, 1),
-                                row['position'][1] + random.uniform(-1, 1),
-                                row['position'][2] + random.uniform(-1, 1))
-                new_planning[drone].loc[index, 'position'] = new_position
+    # Compute the new intermediate positions.
+    if dimension_index == 0 :
+        intermediate_pos_1 = (start_pos[0] + offset, start_pos[1], start_pos[2])
+        intermediate_pos_2 = (end_pos[0] + offset, end_pos[1], end_pos[2])
+    else :
+        intermediate_pos_1 = (start_pos[0], start_pos[1] + offset, start_pos[2])
+        intermediate_pos_2 = (end_pos[0], end_pos[1] + offset, end_pos[2])
+    
+    # Compute the new passage times.
+    start_time = planning.iloc[start_pos_index]['time']
+    end_time = planning.iloc[start_pos_index + 1]['time']
+    
+    intermediate_time_1 = (datetime.combine(datetime.today(), start_time) + timedelta(seconds=1 / drone_speed)).time()
+    intermediate_time_2 = (datetime.combine(datetime.today(), end_time) + timedelta(seconds=1 / drone_speed)).time()
+
+    # Remove microseconds
+    intermediate_time_1 = intermediate_time_1.replace(microsecond=0)
+    intermediate_time_2 = intermediate_time_2.replace(microsecond=0)
+
+    # Retrieve other informations.
+    task_type = planning.iloc[start_pos_index]['task_type']
+    task_id = planning.iloc[start_pos_index]['id']
+
+    # Build the new planning.
+    new_rows = pd.DataFrame([
+        {'time': intermediate_time_1, 'task_type': task_type, 'id': task_id, 'position': intermediate_pos_1},
+        {'time': intermediate_time_2, 'task_type': task_type, 'id': task_id, 'position': intermediate_pos_2}
+    ])
+
+    new_planning = pd.concat([planning[:start_pos_index+1], new_rows, planning[start_pos_index+1:]]).reset_index(drop=True)
+
+    # Delay passage time for next points.
+    for i in range(start_pos_index + 3, len(new_planning)) :
+        new_planning.at[i, 'time'] = (datetime.combine(datetime.today(), new_planning.at[i, 'time']) + timedelta(seconds=2 / drone_speed)).time().replace(microsecond=0)
 
     return new_planning
 

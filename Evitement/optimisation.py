@@ -1,8 +1,17 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
 import random
 from tqdm import tqdm
 from Evitement.avoidance import *
+
+def plot_evolution(data, xlabel, ylabel, title):
+    plt.figure()
+    plt.plot(data)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.show()
 
 def metropolis_acceptance(current_cost, new_cost, temp):
     if new_cost < current_cost:
@@ -10,12 +19,15 @@ def metropolis_acceptance(current_cost, new_cost, temp):
     return random.uniform(0, 1) < np.exp((current_cost - new_cost) / temp)
 
 def simulated_annealing(planning: Dict[str, pd.DataFrame], drone_speed: int, t_initial: float = 1000, t_freeze: float = 0.1, alpha: float = 0.9, iterations_per_temp = 500):
-
-    temp = t_initial
-
     # Intitialisation
+    temp = t_initial
     current_planning = planning.copy()
     current_cost = compute_cost(current_planning)
+
+    # Save data for visualisation
+    costs_evol = []
+    temp_evol = []
+    accept_evol = []
 
     # Keep the best solution
     best_planning = current_planning
@@ -23,25 +35,36 @@ def simulated_annealing(planning: Dict[str, pd.DataFrame], drone_speed: int, t_i
     pbar = tqdm(total=int(np.log(t_freeze / t_initial) / np.log(alpha)), desc="Simulated Annealing")
 
     while temp > t_freeze :
+        acceptances = 0
         # Explore solutions at constant temperature
         for _ in range(iterations_per_temp) :
-            _, calculated_collisions = count_collisions(current_planning)
-
-            if not calculated_collisions.empty :
-                new_planning = fix_calculated_collisions(planning, calculated_collisions, drone_speed)
+            # Generate a slightly different new planning
+            new_planning = make_new_planning(current_planning, drone_speed)
 
             # Compare costs
             new_cost = compute_cost(new_planning)
 
             if metropolis_acceptance(current_cost, new_cost, temp) :
                 current_planning, current_cost = new_planning, new_cost
+                acceptances += 1
             
             if new_cost < current_cost :
                 best_planning = new_planning 
+
+        # Keep trace
+        costs_evol.append(current_cost)
+        temp_evol.append(temp)
+        accept_evol.append(acceptances/iterations_per_temp)
+
         # Cool the temperature
         temp = temp * alpha
         pbar.update(1)
     pbar.close()
+
+    # Plot evolutions
+    plot_evolution(costs_evol, "Iterations", "Cost", "Cost evolution")
+    plot_evolution(temp_evol, "Iterations", "Temperature", "Temperature evolution")
+    plot_evolution(accept_evol, "Steps", "Acceptation rate", "Acceptation rate evolution")
 
     return best_planning
 
