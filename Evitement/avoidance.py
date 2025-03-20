@@ -25,7 +25,7 @@ def get_segments(df):
 
     return segments
 
-def interpolate_positions(p1, p2, q1, q2):
+def interpolate_positions(p1, p2, q1, q2, drone_speed):
     x1, y1, z1, t1 = p1
     x2, y2, z2, t2 = p2
     x3, y3, z3, t3 = q1
@@ -39,10 +39,11 @@ def interpolate_positions(p1, p2, q1, q2):
 
     # Generates interpolate positions when common time interval
     interpolated_positions = []
-    duration = int((common_end - common_start).total_seconds() // 60)
+    time_step = (60//drone_speed)/3
+    duration = int(((common_end - common_start).total_seconds())//time_step)
 
     for step in range(duration + 1):
-        time = common_start + pd.Timedelta(minutes=step)
+        time = common_start + pd.Timedelta(seconds=step * time_step)
         pos1_x = round(x1 + (x2 - x1) * (time - t1).total_seconds() / (t2 - t1).total_seconds())
         pos1_y = round(y1 + (y2 - y1) * (time - t1).total_seconds() / (t2 - t1).total_seconds())
         pos1_z = round(z1 + (z2 - z1) * (time - t1).total_seconds() / (t2 - t1).total_seconds())
@@ -55,7 +56,7 @@ def interpolate_positions(p1, p2, q1, q2):
 
     return interpolated_positions
 
-def count_direct_collisions(drone_data: Dict[str, pd.DataFrame]) -> pd.DataFrame:
+def count_direct_collisions(drone_data: Dict[str, pd.DataFrame], charging_station_position: tuple) -> pd.DataFrame:
     """Counts direct collisions : same position at the same time"""
 
     all_positions = []
@@ -73,10 +74,30 @@ def count_direct_collisions(drone_data: Dict[str, pd.DataFrame]) -> pd.DataFrame
         .reset_index()
     )
 
-    direct_collisions_df = collisions_df[collisions_df["drone_count"] > 1]
+    direct_collisions_df = collisions_df[
+        (collisions_df["drone_count"] > 1) & 
+        (collisions_df["drones"].apply(lambda x: len(set(x)) > 1)) &
+        (collisions_df["position"]!= charging_station_position)] #there are no collisions on the charging station
+    
     return direct_collisions_df
 
-def count_calculated_collisions(drone_data: Dict[str, pd.DataFrame]) -> pd.DataFrame :
+def filter_indirect_collisions(calculated_collisions_df, direct_collisions_df, time_step):
+    """Remove calculated collisions that are too close to direct collisions."""
+    direct_collisions_times = direct_collisions_df['time']
+
+    mask = calculated_collisions_df.apply(
+        lambda row: not any(
+            abs((row['collision_time'] - dt).total_seconds()) < time_step or
+            abs((row['start_time1'] - dt).total_seconds()) < time_step or
+            abs((row['start_time2'] - dt).total_seconds()) < time_step
+            for dt in direct_collisions_times
+        ),
+        axis=1
+    )
+
+    return calculated_collisions_df[mask]
+
+def count_calculated_collisions(drone_data: Dict[str, pd.DataFrame], drone_speed: float, charging_station_position: tuple, time_step: float) -> pd.DataFrame :
     """Count calculated collisions between drones"""
     calculated_collisions = []
 
@@ -106,7 +127,7 @@ def count_calculated_collisions(drone_data: Dict[str, pd.DataFrame]) -> pd.DataF
                     continue  # No spatial intersection trajectories
 
                 # 3 - Interpolate drone position at every minute only when suspect time interval and trajectories cross
-                interpolated_points = interpolate_positions(p1, p2, q1, q2)
+                interpolated_points = interpolate_positions(p1, p2, q1, q2, drone_speed)
 
                 for time, start_time1, start_time2, pos1, pos2 in interpolated_points:
                     #Check for crossing trajectories
@@ -114,13 +135,27 @@ def count_calculated_collisions(drone_data: Dict[str, pd.DataFrame]) -> pd.DataF
                     if prev_index >= 0:
                         _, prev_time1, prev_time2, prev_pos1, prev_pos2 = interpolated_points[prev_index]
                         if prev_pos1 == pos2 and prev_pos2 == pos1:
-                            calculated_collisions.append((prev_time1, prev_time2, time, prev_pos1, prev_pos2, d1, d2))
+                            calculated_collisions.append((prev_time1, prev_time2, time, prev_pos1, d1, d2))
 
-    calculated_collisions_df = pd.DataFrame(calculated_collisions, columns=["start_time1", "start_time2", "collision_time", "pos1", "pos2", "drone1", "drone2"])
-    
+    calculated_collisions_df = pd.DataFrame(calculated_collisions, columns=["start_time1", "start_time2", "collision_time", "collision_position", "drone1", "drone2"])
+
+    #Filter collision happening within the same step to avoid duplicates
+    calculated_collisions_df["time_diff"] = (
+    calculated_collisions_df.groupby(["drone1", "drone2", "collision_position"])["collision_time"]
+    .diff()
+    .dt.total_seconds()
+    )
+    calculated_collisions_df = calculated_collisions_df[
+        (calculated_collisions_df["time_diff"].isna()) | (calculated_collisions_df["time_diff"] >= time_step)
+    ].drop(columns=["time_diff"])
+
+    #Remove collisions if happening on the charging station
+    calculated_collisions_df = calculated_collisions_df[
+    ~(calculated_collisions_df["collision_position"] == charging_station_position)]
+
     return calculated_collisions_df
 
-def detect_near_misses(drone_data, threshold=2):
+def detect_near_misses(drone_data, drone_speed, charging_station_position, threshold, time_step):
     """Detects when drones are dangerously close accordingly to our threshold."""
     all_segments = {drone: get_segments(df) for drone, df in drone_data.items()}
     near_misses = []
@@ -128,19 +163,35 @@ def detect_near_misses(drone_data, threshold=2):
     for (drone1, segments1), (drone2, segments2) in itertools.combinations(all_segments.items(), 2):
         for seg1 in segments1:
             for seg2 in segments2:
-                interpolated_positions = interpolate_positions(*seg1, *seg2)
+                interpolated_positions = interpolate_positions(*seg1, *seg2, drone_speed)
 
                 for time, _, _, pos1, pos2 in interpolated_positions:
                     distance = sum(abs(a - b) for a, b in zip(pos1, pos2))
 
-                    if distance <= threshold:
-                        near_misses.append((time, drone1, drone2, pos1, pos2, distance))
+                    if distance <= threshold and distance > 0 :
+                        near_misses.append((time, drone1, drone2, pos1, pos2))
 
-    near_misses_df = pd.DataFrame(near_misses, columns=["time", "drone1", "drone2", "pos1", "pos2", "distance"])
+    near_misses_df = pd.DataFrame(near_misses, columns=["time", "drone1", "drone2", "pos1", "pos2"])
+    
+    #Remove near misses happening at the charging station
+    near_misses_df = near_misses_df = near_misses_df[
+    ~((near_misses_df["pos1"] == charging_station_position) & 
+      (near_misses_df["pos2"] == charging_station_position))]
+    
+    #Filter near misses happening within the same step to avoid duplicates
+    near_misses_df["time_diff"] = (
+        near_misses_df.groupby(["drone1", "drone2", "pos1", "pos2"])["time"]
+        .diff()
+        .dt.total_seconds()
+    )
+    near_misses_df = near_misses_df[
+        near_misses_df["time_diff"].isna() | (near_misses_df["time_diff"] > time_step)
+    ]
+    near_misses_df = near_misses_df.drop(columns=["time_diff"])
 
     return near_misses_df
 
-def compute_cost(drone_data: Dict[str, pd.DataFrame], threshold: int, collision_penalty: float = 100.0, avoidance_penalty: float = 10.0, total_duration_penalty: float = 1.0) -> float:
+def compute_cost(drone_data: Dict[str, pd.DataFrame], drone_speed: int, charging_station_position: tuple, threshold: int, time_step: float, collision_penalty: float = 100.0, avoidance_penalty: float = 10.0, total_duration_penalty: float = 1.0) -> float:
     """Compute cost of the total time of flight time, add a penalty weighted by the number of collision"""
     total_flight_time = 0
     start_times = []
@@ -173,11 +224,11 @@ def compute_cost(drone_data: Dict[str, pd.DataFrame], threshold: int, collision_
         total_flight_time += float(total_time)
     
     # Gets collisions
-    direct_collisions_df, crossing_collisions_df = count_direct_collisions(drone_data), count_calculated_collisions(drone_data)
+    direct_collisions_df, crossing_collisions_df = count_direct_collisions(drone_data, charging_station_position), count_calculated_collisions(drone_data, drone_speed, charging_station_position, time_step)
     total_collisions = len(direct_collisions_df) + len(crossing_collisions_df)
 
     # Gets near misses
-    near_misses = detect_near_misses(drone_data, threshold)
+    near_misses = detect_near_misses(drone_data, drone_speed, charging_station_position, threshold, time_step)
     number_near_misses = len(near_misses)
 
     # Gets total duration to complete today's tasks
