@@ -42,7 +42,7 @@ objects = create_objects_in_warehouse(n_objects, warehouse_3d)
 task_list_path = generate_task_list(n_tasks, objects, arrival_time_slots, departure_time_slots, warehouse_3d, mapping_config)
 
 #False by default. If True, will display the warehouse in a plot
-warehouse_3d.display()
+warehouse_3d.display(True)
 warehouse_3d.show_graph()
 
 #Generates the adjacency matrix
@@ -59,7 +59,7 @@ planning_drones = schedule(warehouse_3d, planning_config, mapping_config)
 
 launch_visualisation_plotly(planning_drones,warehouse_3d)
 
-#print(planning_drones)
+print(planning_drones)
 
 # Check if it respects the condition of no collisions and no near misses.
 ##Collision andnenar misses parameters
@@ -80,14 +80,18 @@ print("Near misses: ", detect_near_misses_df)
 cost = compute_cost(planning_drones, planning_config['drone_speed'], charging_station_position, threshold, time_step, collision_penalty = 500.0, avoidance_penalty= 10.0, total_duration_penalty = 1.0)
 print("Cost:", cost)
 
-# # # Use simulated annealing to find a solution that optimizes total flight duration while respecting the conditions.
-# # final_planning, final_cost, respect_constraints = find_optimal_solution(planning_drones, 20, 0.1, 0.9, 20, 5)
+# Use simulated annealing to find a solution that optimizes total flight duration while respecting the conditions.
+final_planning, final_cost, respect_constraints = find_optimal_solution(planning_drones, planning_config['drone_speed'], charging_station_position, threshold, time_step, 30, 0.1, 0.9, 15, 1)
 
-# print("Final planning : ", final_planning)
-# print("Final cost : ", final_cost)
-# print("Respect constraints : ", respect_constraints)
+print("Final planning : ", final_planning)
+print("Final cost : ", final_cost)
+print("Respect constraints: ", respect_constraints)
 
-# if not respect_constraints :
-#     direct_collisions_df, calculated_collisions_df = count_collisions(final_planning)
-#     print("Direct collisions:", direct_collisions_df)
-#     print("Calculated collision: ", calculated_collisions_df)
+if not respect_constraints :
+    direct_collisions_df, calculated_collisions_df = count_direct_collisions(planning_drones, charging_station_position), count_calculated_collisions(planning_drones, planning_config['drone_speed'], charging_station_position, time_step)
+    calculated_collisions_df = filter_indirect_collisions(calculated_collisions_df, direct_collisions_df, time_step)
+    print("Direct collisions: ", direct_collisions_df)
+    print("Calculated collision: ", calculated_collisions_df)
+
+    detect_near_misses_df = detect_near_misses(planning_drones, planning_config['drone_speed'], charging_station_position, threshold, time_step)
+    print("Near misses: ", detect_near_misses_df)

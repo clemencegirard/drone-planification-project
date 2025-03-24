@@ -238,52 +238,229 @@ def compute_cost(drone_data: Dict[str, pd.DataFrame], drone_speed: int, charging
 
     return total_flight_time + (total_collisions * collision_penalty) + (number_near_misses * avoidance_penalty) + (total_duration * total_duration_penalty)
 
-def fix_collisions(planning: Dict[str, pd.DataFrame], direct_collisions: pd.DataFrame, calculated_collisions: pd.DataFrame):
+    # Gets total duration to complete today's tasks
+    start_times = [datetime.strptime(str(t), "%H:%M:%S") if isinstance(t, str) else t for t in start_times]
+    end_times = [datetime.strptime(str(t), "%H:%M:%S") if isinstance(t, str) else t for t in end_times]
+    total_duration = (max(end_times) - min(start_times)).total_seconds()
+
+    return total_flight_time + (total_collisions * collision_penalty) + (number_near_misses * avoidance_penalty) + (total_duration * total_duration_penalty)
+
+def change_planning(planning: Dict[str, pd.DataFrame],heuristic: int, direct_collisions: pd.DataFrame, calculated_collisions: pd.DataFrame, near_misses: pd.DataFrame):
+    if heuristic == 1 :
+        return fix_direct_collisions_time(planning, direct_collisions)
+    elif heuristic == 2 :
+        return fix_calulated_collisions_time(planning, calculated_collisions)
+    elif heuristic == 3 :
+        return fix_near_misses_time(planning, near_misses)
+    
+    return planning
+    
+def make_new_planning(planning: Dict[str, pd.DataFrame], drone_speed: int, charging_station_position: tuple, threshold: int, time_step: float):
+    direct_collisions = count_direct_collisions(planning, charging_station_position)
+    calculated_collisions = count_calculated_collisions(planning, drone_speed, charging_station_position, time_step)
+    near_misses = detect_near_misses(planning, drone_speed, charging_station_position, threshold, time_step)
+
+    possible_heuristics = []
+    if not direct_collisions.empty :
+        possible_heuristics.append(1)
+    elif not calculated_collisions.empty :
+        possible_heuristics.append(2)
+    elif not near_misses.empty :
+        possible_heuristics.append(3)
+    
+    if len(possible_heuristics) != 0 :
+        heuristic = random.choice(possible_heuristics)
+    else : heuristic = 0
+
+    new_planning = change_planning(planning, heuristic, direct_collisions, calculated_collisions, near_misses)
+
+    return new_planning
+
+def fix_calculated_collisions_bypass(planning: Dict[str, pd.DataFrame], calculated_collisions: pd.DataFrame, drone_speed : int):
     new_planning = planning.copy()
 
-    # Fix direct collisions
-    for _, collision in direct_collisions.iterrows():
-        for drone in collision['drones'][1:]:
-            # Change the time or the position to avoid the collision
-            original_time = collision['time']
-            new_time_delta = timedelta(minutes=random.uniform(-1, 1))
-            new_time = (datetime.combine(datetime.today(), original_time) + new_time_delta).time()
-
-            # Vérifiez que la condition correspond à au moins une ligne
-            matching_indices = new_planning[drone]['time'] == original_time
-            if matching_indices.any():
-                new_planning[drone].loc[matching_indices, 'time'] = new_time
-
-    # Fix crossing collisions
+    # Fix calculated collisions
     for _, collision in calculated_collisions.iterrows():
-        drone1 = collision['drone1']
-        # Change the position of one of the drones to avoid the collision
-        new_position1 = (collision['pos1'][0] + random.uniform(-1, 1),
-                         collision['pos1'][1] + random.uniform(-1, 1))
+        # The lane on which the collison will take place.
+        if collision['pos1'][0] == collision['pos2'][0]:
+            dimension_index = 0
+        else :
+            dimension_index = 1
+        # Add new positions to one of the drones' trajectory to avoid the collision
+        drone = collision['drone1']
+        start_pos = collision['pos1']
+        start_pos_time = collision['start_time1']
 
-        # Vérifiez que la condition correspond à au moins une ligne
-        matching_indices = new_planning[drone1]['time'] == collision['start_time']
-        if matching_indices.any():
-            new_planning[drone1].loc[matching_indices, 'position'] = new_position1
+        # Bypass the collision
+        new_planning[drone] = bypass_obstacle(new_planning[drone], start_pos, start_pos_time, dimension_index, drone_speed)
+
+    return new_planning
+
+def bypass_obstacle(planning: pd.DataFrame, start_pos: tuple[int, int, int], start_pos_time: str, dimension_index: int, drone_speed: int) :
+    # Find the index of the start position
+    start_pos_time = start_pos_time.time()
+    start_pos_index = planning[planning['time'] == start_pos_time].index
+    start_pos_index = int(start_pos_index[0])
+
+    # Get the end position
+    end_pos = planning.iloc[start_pos_index+1]['position']
+    # Random offset to move on the next line.
+    offset = random.choice([-1, 1])
+
+    # Compute the new intermediate positions.
+    if dimension_index == 0 :
+        intermediate_pos_1 = (start_pos[0] + offset, start_pos[1], start_pos[2])
+        intermediate_pos_2 = (end_pos[0] + offset, end_pos[1], end_pos[2])
+    else :
+        intermediate_pos_1 = (start_pos[0], start_pos[1] + offset, start_pos[2])
+        intermediate_pos_2 = (end_pos[0], end_pos[1] + offset, end_pos[2])
+    
+    # Compute the new passage times.
+    start_time = planning.iloc[start_pos_index]['time']
+    end_time = planning.iloc[start_pos_index + 1]['time']
+    
+    intermediate_time_1 = (datetime.combine(datetime.today(), start_time) + timedelta(seconds=1 / drone_speed)).time()
+    intermediate_time_2 = (datetime.combine(datetime.today(), end_time) + timedelta(seconds=1 / drone_speed)).time()
+
+    # Remove microseconds
+    intermediate_time_1 = intermediate_time_1.replace(microsecond=0)
+    intermediate_time_2 = intermediate_time_2.replace(microsecond=0)
+
+    # Retrieve other informations.
+    task_type = planning.iloc[start_pos_index]['task_type']
+    task_id = planning.iloc[start_pos_index]['id']
+
+    # Build the new planning.
+    new_rows = pd.DataFrame([
+        {'time': intermediate_time_1, 'task_type': task_type, 'id': task_id, 'position': intermediate_pos_1},
+        {'time': intermediate_time_2, 'task_type': task_type, 'id': task_id, 'position': intermediate_pos_2}
+    ])
+
+    new_planning = pd.concat([planning[:start_pos_index+1], new_rows, planning[start_pos_index+1:]]).reset_index(drop=True)
+
+    # Delay passage time for next points.
+    for i in range(start_pos_index + 3, len(new_planning)) :
+        new_planning.at[i, 'time'] = (datetime.combine(datetime.today(), new_planning.at[i, 'time']) + timedelta(seconds=2 / drone_speed)).time().replace(microsecond=0)
 
     return new_planning
 
-def make_new_planning(planning: Dict[str, pd.DataFrame]):
-    new_planning = planning.copy()
+def get_battery_at_time(planning: Dict[str, pd.DataFrame], drone: str, collision_time: str) -> float:
+    df = planning[drone].copy()
+    df['time'] = pd.to_datetime(df['time'])
+    collision_time = pd.Timestamp(collision_time)
+ 
+    closest_row = df.loc[(df['time'] - collision_time).abs().idxmin()]
+    return closest_row['battery_percentage']
 
-    for drone, df in new_planning.items():
-        for index, row in df.iterrows():
-            if random.random() < 0.1:  # 10% de chance de modifier une ligne
-                # Modifier l'heure de passage
-                original_time = row['time']
-                new_time_delta = timedelta(minutes=random.uniform(-1, 1))
-                new_time = (datetime.combine(datetime.today(), original_time) + new_time_delta).time()
-                new_planning[drone].loc[index, 'time'] = new_time
+def fix_direct_collisions_time(planning_drone: Dict[str, pd.DataFrame], collisions: pd.DataFrame):
+    # Create a copy of the planning to change
+    new_planning = planning_drone.copy()
+    # Fix the first collision of the list
+    collision = collisions.iloc[0]
+    collision_time = collision['time']
+    drones = collision['drones']
 
-                # Modifier la position
-                new_position = (row['position'][0] + random.uniform(-1, 1),
-                                row['position'][1] + random.uniform(-1, 1),
-                                row['position'][2] + random.uniform(-1, 1))
-                new_planning[drone].loc[index, 'position'] = new_position
+    # Select drones according to battery level at the time of the collision
+    battery_levels = {drone: get_battery_at_time(new_planning, drone, collision_time) for drone in drones}
+    sorted_drones = sorted(battery_levels, key=battery_levels.get)
+    # If there are two drones, delay the one with the lowest battery
+    if len(drones) == 2 :
+        drone = sorted_drones[0]
+        planning_drone = new_planning[drone]
+        new_planning[drone] = push_back_transit_times(planning_drone, collision_time, time_offset=2)
+    # Else, choose drones to delay
+    else :
+        # Fix one drone
+        fixed_drone = sorted_drones[len(sorted_drones) // 2]
+        for drone in sorted_drones:
+            if drone == fixed_drone:
+                continue 
+            # Delay the drone with the lowest battery
+            if drone == sorted_drones[0]:  
+                time_offset = random.choice([1, 2])  
+            # Advance drones with highest battery
+            else:  
+                time_offset = random.choice([-2, -1])
+            planning_drone = new_planning[drone]
+            new_planning[drone] = push_back_transit_times(planning_drone, collision_time, time_offset)
+    
+    return new_planning
+
+def fix_calulated_collisions_time(planning_drone: Dict[str, pd.DataFrame], collisions: pd.DataFrame):
+    # Create a copy of the planning to change
+    new_planning = planning_drone.copy()
+    # Fix the first collision of the list
+    collision = collisions.iloc[0]
+    collision_time = collision['collision_time']
+    drone1, drone2 = collision['drone1'], collision['drone2']
+
+    # Select drones according to battery level at the time of the collision
+    battery_levels = {drone: get_battery_at_time(new_planning, drone, collision_time) for drone in [drone1, drone2]}
+    sorted_drones = sorted(battery_levels, key=battery_levels.get)
+    # Delay the drone with the lowest battery
+    drone = sorted_drones[0]
+    planning_drone = new_planning[drone]
+    new_planning[drone] = push_back_transit_times(planning_drone, collision_time, time_offset=2)
+    
+    return new_planning
+
+def fix_near_misses_time(planning_drone: Dict[str, pd.DataFrame], near_misses: pd.DataFrame):
+    # Create a copy of the planning to change
+    new_planning = planning_drone.copy()
+
+    # Fix the first near miss of the list
+    near_miss = near_misses.iloc[0]
+    near_miss_time = near_miss['time']
+    drone1, drone2 = near_miss['drone1'], near_miss['drone2']
+
+    # Select drones according to battery level at the time of the near miss
+    battery_levels = {drone: get_battery_at_time(new_planning, drone, near_miss_time) for drone in [drone1, drone2]}
+    sorted_drones = sorted(battery_levels, key=battery_levels.get)
+
+    # Delay the drone with the lowest battery
+    drone = sorted_drones[0]
+    planning_drone = new_planning[drone]
+    new_planning[drone] = push_back_transit_times(planning_drone, near_miss_time, time_offset=2)
 
     return new_planning
+    
+def push_back_transit_times(planning: pd.DataFrame, collision_time: pd.Timestamp, time_offset: int):
+    # Find the index of the collision
+    collision_time_index = planning.index[planning['time'] == collision_time].tolist()
+    
+    # If there is no row matching the exact collision time, use the one just before
+    if not collision_time_index:
+        closest_time_index = planning[planning['time'] < collision_time]['time'].idxmax()
+        collision_time_index = [closest_time_index]  # Keep the structure
+        
+    collision_time_index = collision_time_index[0]  # Get the first match
+
+    # Find the last time the drone was at the charging station before the collision
+    previous_charging_index = None
+    for i in range(collision_time_index, -1, -1):  # Iterate backwards
+        if planning.at[i, 'task_type'] == 'RC':
+            previous_charging_index = i
+            break
+
+    # If the drone never visited the station before, it is because it's its first trajectory.
+    if previous_charging_index is None:
+        previous_charging_index = 0
+
+    # Find the next time the drone will be at the charging station after the collision
+    next_charging_index = None
+    for i in range(collision_time_index, len(planning)) :
+        if planning.at[i, 'task_type'] == 'RC':
+            next_charging_index = i
+            break
+
+    # If the drone never visits the station after, it's because it's its last trajectory.
+    if next_charging_index is None:
+        next_charging_index = len(planning) 
+
+    # Delay passage time between the two RC times.
+    for i in range(previous_charging_index, next_charging_index+1):
+        new_time = planning.at[i,'time'] + pd.Timedelta(minutes=time_offset)
+
+        planning.at[i, 'time'] = new_time
+
+    return planning
