@@ -230,7 +230,7 @@ class Warehouse3D:
 
             # Dessiner le graphe
             plt.figure(figsize=(10, 8))
-            nx.draw(G, pos, with_labels=True, node_size=700, node_color="lightblue", font_size=10, font_weight="bold",
+            nx.draw(G, pos, with_labels=True, node_size=2000, node_color="lightblue", font_size=14, font_weight="bold",
                     arrows=True)
 
             # Ajouter les étiquettes des poids

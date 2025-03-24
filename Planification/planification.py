@@ -77,6 +77,19 @@ def prepare_csv(csv_file_name: str, warehouse: Warehouse3D , config: json) -> pd
         axis=1
     )
 
+    # Compute task distances and paths
+    csv_file[['task_distance', 'task_path']] = csv_file.apply(
+        lambda row: pd.Series(warehouse.compute_manhattan_distance_with_BFS(
+            tuple(json.loads(row['pos0'])),
+            tuple(json.loads(row['pos1'])),
+            return_path=True,
+            reduced=True
+        )),
+        axis=1
+    )
+
+
+
     # Check for infinite distances
     if np.isinf(csv_file['task_distance']).any():
         raise ValueError("Error: One or more distances are infinite. Check configuration.")
@@ -360,10 +373,6 @@ def drone_initial_selection(drone_last_position: Dict[str, Tuple[int, int, int]]
         return None, None
 
     return real_start_time, best_drone
-
-
-def battery_threshold_test(full_time2 : timedelta, drone_battery : timedelta , max_fly_time : timedelta ,lower_threshold : float) -> bool:
-    return (drone_battery- full_time2) > max_fly_time*lower_threshold
 
 
 def drone_empty_battery_selection(drone_quantity: int, csv: pd.DataFrame, drone_battery: Dict[str, timedelta],

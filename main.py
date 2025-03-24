@@ -13,7 +13,7 @@ from Planification.planification import load_config_planning
 
 ###############  Parameters ###################
 
-warehouse_name = "intermediate_warehouse"
+warehouse_name = "intermediate_warehouse_v2"
 planning_config_name = "planning_test_1"
 n_objects = 60
 n_tasks = 120
