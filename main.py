@@ -2,6 +2,7 @@
 
 from datetime import time, datetime
 import random
+import os
 from Planification.adjacency_matrix import *
 from Warehouse.warehouse_builder import load_config_warehouse,build_warehouse
 from Planification.task_list_generator import create_objects_in_warehouse, generate_task_list
@@ -15,10 +16,17 @@ from Planification.planification import load_config_planning
 
 warehouse_name = "one_level_U_warehouse"
 planning_config_name = "planning_test_1"
-n_objects = 15
-n_tasks = 20
+n_objects = 10
+n_tasks = 14
 arrival_time_slots = [time(8,0,0)]
 departure_time_slots = [time(14,0,0)]
+collision_penalty = 10000.0
+avoidance_penalty = 1000.0
+total_duration_penalty = 0.01
+T_init = 30
+T_freeze = 10
+alpha_T = 0.9
+k_iter = 10
 
 seed = 29
 
@@ -76,12 +84,18 @@ print("Calculated collision: ", calculated_collisions_df)
 detect_near_misses_df = detect_near_misses(planning_drones, planning_config['drone_speed'], charging_station_position, threshold, time_step)
 print("Near misses: ", detect_near_misses_df)
 
+
 # Compute its cost.
-cost = compute_cost(planning_drones, planning_config['drone_speed'], charging_station_position, threshold, time_step, collision_penalty = 500.0, avoidance_penalty= 10.0, total_duration_penalty = 1.0)
+cost = compute_cost(planning_drones, planning_config['drone_speed'], charging_station_position, threshold, time_step, collision_penalty, avoidance_penalty, total_duration_penalty)
 print("Cost:", cost)
 
+experience = f"{planning_config['drone_quantity']}_drones&drone_speed={planning_config['drone_speed']}&collision_penalty={collision_penalty}&avoidance_penalty={avoidance_penalty}&T_init={T_init}&T_freeze={T_freeze}&alha_T={alpha_T}&k_iter={k_iter}"
+
+results_dir = os.path.join("Results", warehouse_name, experience)
+os.makedirs(results_dir, exist_ok=True)
+
 # Use simulated annealing to find a solution that optimizes total flight duration while respecting the conditions.
-final_planning, final_cost, respect_constraints = find_optimal_solution(planning_drones, planning_config['drone_speed'], charging_station_position, threshold, time_step, 30, 0.1, 0.9, 15, 1)
+final_planning, final_cost, respect_constraints = find_optimal_solution(results_dir, planning_drones, planning_config['drone_speed'], charging_station_position, threshold, time_step, collision_penalty, avoidance_penalty, total_duration_penalty, T_init, T_freeze, alpha_T, k_iter, 1)
 
 print("Final planning : ", final_planning)
 print("Final cost : ", final_cost)
