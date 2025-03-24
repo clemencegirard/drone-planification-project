@@ -13,12 +13,12 @@ from Planification.planification import load_config_planning
 
 ###############  Parameters ###################
 
-warehouse_name = "one_level_U_warehouse"
+warehouse_name = "intermediate_warehouse_v2"
 planning_config_name = "planning_test_1"
-n_objects = 15
-n_tasks = 20
-arrival_time_slots = [time(8,0,0)]
-departure_time_slots = [time(14,0,0)]
+n_objects = 60
+n_tasks = 120
+arrival_time_slots = [time(8,0,0), time(10,0,0)]
+departure_time_slots = [time(14,0,0), time(17,0,0)]
 
 seed = 29
 

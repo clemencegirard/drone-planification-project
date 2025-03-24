@@ -238,6 +238,13 @@ def compute_cost(drone_data: Dict[str, pd.DataFrame], drone_speed: int, charging
 
     return total_flight_time + (total_collisions * collision_penalty) + (number_near_misses * avoidance_penalty) + (total_duration * total_duration_penalty)
 
+    # Gets total duration to complete today's tasks
+    start_times = [datetime.strptime(str(t), "%H:%M:%S") if isinstance(t, str) else t for t in start_times]
+    end_times = [datetime.strptime(str(t), "%H:%M:%S") if isinstance(t, str) else t for t in end_times]
+    total_duration = (max(end_times) - min(start_times)).total_seconds()
+
+    return total_flight_time + (total_collisions * collision_penalty) + (number_near_misses * avoidance_penalty) + (total_duration * total_duration_penalty)
+
 def change_planning(planning: Dict[str, pd.DataFrame],heuristic: int, direct_collisions: pd.DataFrame, calculated_collisions: pd.DataFrame, near_misses: pd.DataFrame):
     if heuristic == 1 :
         return fix_direct_collisions_time(planning, direct_collisions)
