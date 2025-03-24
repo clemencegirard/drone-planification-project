@@ -14,8 +14,9 @@ def load_config_planning( planning_name : str, config_path="config_planning.json
         config = json.load(f)
 
     planning_config = config["planning"][planning_name]
+    mapping_config = config["task_name_mapping"]
 
-    return planning_config
+    return planning_config, mapping_config
 
 
 def open_csv(csv_file_name: str) -> pd.DataFrame:
@@ -105,7 +106,7 @@ def full_task_treatment(drone_time_follow: Dict[str, datetime], drone_nb: str, s
                         warehouse: Warehouse3D, drone_last_position: Dict[str, Tuple[int, int, int]],
                         drone_speed: int, drone_battery: Dict[str, timedelta], task_type: str,
                         object_time_treatment: timedelta, rc_path: List[Tuple[int, int, int]], task_id: str,
-                        csv: pd.DataFrame, index_task: int, max_fly_time : timedelta) -> Dict[str, pd.DataFrame]:
+                        csv: pd.DataFrame, index_task: int, max_fly_time : timedelta, mapping_config : json) -> Dict[str, pd.DataFrame]:
     """
     Handle the full treatment of a task, including positioning, task processing, and returning to charge.
 
@@ -126,6 +127,7 @@ def full_task_treatment(drone_time_follow: Dict[str, datetime], drone_nb: str, s
         csv: The DataFrame containing all tasks.
         index_task: The index of the task in the DataFrame.
         max_fly_time : Maximal fly time
+        mapping_config : Config json for task naming
 
     Returns:
         Updated planning dictionary.
@@ -135,12 +137,23 @@ def full_task_treatment(drone_time_follow: Dict[str, datetime], drone_nb: str, s
 
     # Position the drone at the start of the task
     positioning_time, planning = positionning(planning, drone_nb, warehouse, drone_last_position[drone_nb],
-                                              task_path[0], drone_speed, drone_time_follow, drone_battery, max_fly_time, True)
+                                              task_path[0], drone_speed, drone_time_follow, drone_battery, max_fly_time, mapping_config,True)
+
     drone_last_position[drone_nb] = task_path[-1]  # Update the drone's final position
+
+
+    #verif si le drone a deja été bougé ou non
+    if planning[drone_nb].empty:
+        # First position, the drone starts at 'first_pos'
+        inital_pos = warehouse.get_charge_location()
+    else:
+        # Last position in the DataFrame to determine the starting position
+        inital_pos = planning[drone_nb].iloc[-1]['position']
+
 
     # Process the task
     planning = task_processing(task_type, drone_time_follow, drone_nb, task_path, object_time_treatment, planning,
-                               rc_path, task_id, drone_speed, drone_battery, max_fly_time)
+                               rc_path, task_id, drone_speed, drone_battery, max_fly_time, mapping_config, inital_pos)
 
     # Return the drone to the charging station
     drone_last_position[drone_nb] = rc_path[-1]
@@ -157,7 +170,7 @@ def full_task_treatment(drone_time_follow: Dict[str, datetime], drone_nb: str, s
 def task_processing(task_type: str, drone_time_follow: Dict[str, datetime], drone_nb: str,
                     task_path: List[Tuple[int, int, int]], object_time_treatment: timedelta,
                     planning: Dict[str, pd.DataFrame], rc_path: List[Tuple[int, int, int]],
-                    task_id: str, drone_speed: int, drone_battery: Dict[str, timedelta], max_fly_time : timedelta) -> Dict[str, pd.DataFrame]:
+                    task_id: str, drone_speed: int, drone_battery: Dict[str, timedelta], max_fly_time : timedelta, mapping_config : json, inital_pos : Tuple[int, int, int] ) -> Dict[str, pd.DataFrame]:
     """
     Process the task and update the drone's schedule.
 
@@ -172,32 +185,36 @@ def task_processing(task_type: str, drone_time_follow: Dict[str, datetime], dron
         task_id: The task identifier.
         drone_speed: Speed of the drone.
         drone_battery: Dictionary tracking the battery level of each drone.
+        mapping_config : Config json for task naming
+        inital_pos: Tuple of the first position of the drone (usualy charger)
 
     Returns:
         Updated planning dictionary.
     """
-    if task_type == "A" or task_type == "D":
+
+
+    if task_type == mapping_config['arrival'] or task_type == mapping_config['departure']:
         drone_time_follow[drone_nb] = drone_time_follow[drone_nb] + object_time_treatment
         drone_battery[drone_nb] -= object_time_treatment
 
     # Add the task path to the drone's schedule
     planning[drone_nb] = add_path_to_df(planning[drone_nb], task_path, task_type, task_id, drone_speed,
-                                        drone_time_follow, drone_nb, [], drone_battery, max_fly_time)
+                                        drone_time_follow, drone_nb, inital_pos, drone_battery, max_fly_time)
 
-    if task_type == "A" or task_type == "D":
+    if task_type == mapping_config['arrival'] or task_type == mapping_config['departure']:
         drone_time_follow[drone_nb] = drone_time_follow[drone_nb] + object_time_treatment
         drone_battery[drone_nb] -= object_time_treatment
 
     # Add the return-to-charge path to the drone's schedule
-    planning[drone_nb] = add_path_to_df(planning[drone_nb], rc_path, 'RC', "", drone_speed, drone_time_follow, drone_nb,
-                                        [], drone_battery, max_fly_time)
+    planning[drone_nb] = add_path_to_df(planning[drone_nb], rc_path, mapping_config['return_charge'], "", drone_speed, drone_time_follow, drone_nb,
+                                        inital_pos, drone_battery, max_fly_time)
 
     return planning
 
 
 def positionning(planning: Dict[str, pd.DataFrame], drone_nb: str, warehouse: Warehouse3D,
                  start: Tuple[int, int, int], end: Tuple[int, int, int], drone_speed: int,
-                 drone_time_follow: Dict[str, datetime], drone_battery: Dict[str, timedelta], max_fly_time : timedelta,
+                 drone_time_follow: Dict[str, datetime], drone_battery: Dict[str, timedelta], max_fly_time : timedelta, mapping_config : json,
                  allow_modification: bool = False) -> Tuple[timedelta, Dict[str, pd.DataFrame]]:
     """
     Position the drone at the start of the task.
@@ -213,6 +230,7 @@ def positionning(planning: Dict[str, pd.DataFrame], drone_nb: str, warehouse: Wa
         drone_battery: Dictionary tracking the battery level of each drone.
         max_fly_time : Max fly time
         allow_modification: Whether to allow modification of the planning.
+        mapping_config : Config json for task naming
 
     Returns:
         A tuple containing the positioning time and the updated planning.
@@ -221,7 +239,7 @@ def positionning(planning: Dict[str, pd.DataFrame], drone_nb: str, warehouse: Wa
     time = compute_travel_time(None, None, drone_speed, positionning_dist)
 
     if allow_modification:
-        planning[drone_nb] = add_path_to_df(planning[drone_nb], positionning_path, 'PO', '', drone_speed,
+        planning[drone_nb] = add_path_to_df(planning[drone_nb], positionning_path, mapping_config['positioning'], '', drone_speed,
                                             drone_time_follow, drone_nb, start, drone_battery, max_fly_time)
 
     return time, planning
@@ -249,15 +267,13 @@ def add_path_to_df(df: pd.DataFrame, positions: List[Tuple[int, int, int]], task
         Updated DataFrame with the new path added.
     """
     for pos in positions:
-        if df.empty:
-            # First position, the drone starts at 'first_pos'
-            start = first_pos
-        else:
-            # Last position in the DataFrame to determine the starting position
-            start = df.iloc[-1]['position']
+
+        # verif si le drone a deja été bougé ou non
+        if not df.empty:
+            first_pos = df.iloc[-1]['position']
 
         # Compute travel time
-        time_delta = compute_travel_time(start, pos, drone_speed)
+        time_delta = compute_travel_time(first_pos, pos, drone_speed)
 
         # Check if drone_time_follow[drone_nb] is already a datetime
         if isinstance(drone_time_follow[drone_nb], timedelta):
@@ -354,7 +370,7 @@ def drone_empty_battery_selection(drone_quantity: int, csv: pd.DataFrame, drone_
                                   planning: Dict[str, pd.DataFrame], warehouse: Warehouse3D,
                                   drone_last_position: Dict[str, Tuple[int, int, int]], drone_speed: int,
                                   drone_time_follow: Dict[str, datetime], charge_speed: int,
-                                  object_time_treatment: timedelta, lower_threshold : float, max_fly_time : timedelta) -> Tuple[
+                                  object_time_treatment: timedelta, lower_threshold : float, max_fly_time : timedelta, mapping_config : json) -> Tuple[
     Dict[str, datetime], Dict[str, str], Dict[str, str], Dict[str, timedelta], Dict[str, timedelta]]:
     """
     Select tasks for drones with empty batteries and compute charging times.
@@ -372,6 +388,7 @@ def drone_empty_battery_selection(drone_quantity: int, csv: pd.DataFrame, drone_
         object_time_treatment: Time required to process the task.
         lower_threshold : Lower battery threshold
         max_fly_time: Maximal fly time
+        mapping_config: Mapping config of param name
 
     Returns:
         A tuple containing dictionaries for best finish times, best tasks, best task types, time for charge, and battery gain.
@@ -403,7 +420,7 @@ def drone_empty_battery_selection(drone_quantity: int, csv: pd.DataFrame, drone_
             task_start_time2 = datetime.combine(datetime.today(), task_time)
 
             # Compute parameters
-            positioning_time2, __ = positionning(planning, drone, warehouse, drone_last_position[drone], task_path2[0],drone_speed, drone_time_follow, drone_battery, False)
+            positioning_time2, __ = positionning(planning, drone, warehouse, drone_last_position[drone], task_path2[0],drone_speed, drone_time_follow, drone_battery, max_fly_time, mapping_config, False)
             full_time2 = row2['full_time'] + positioning_time2 + 2 * object_time_treatment
 
             # battery_threshold_test(full_time2,drone_battery[drone],max_fly_time,lower_threshold)
@@ -522,7 +539,7 @@ def drone_charging_process(drone_time_follow: Dict[str, datetime], drone_battery
     return drone_time_follow, drone_battery
 
 
-def create_drone_schedule(csv: pd.DataFrame, warehouse: Warehouse3D, config : json) -> Dict[str, pd.DataFrame]:
+def create_drone_schedule(csv: pd.DataFrame, warehouse: Warehouse3D, config : json, mapping_config : json) -> Dict[str, pd.DataFrame]:
     """
     Create a full schedule for a fleet of drones.
 
@@ -530,6 +547,7 @@ def create_drone_schedule(csv: pd.DataFrame, warehouse: Warehouse3D, config : js
         csv: The DataFrame containing all tasks.
         warehouse: The warehouse object.
         config : Config json of the parameters of the planning
+        mapping_config : Config json for task naming
 
     Returns:
         A dictionary of DataFrames representing the schedule for each drone.
@@ -574,7 +592,7 @@ def create_drone_schedule(csv: pd.DataFrame, warehouse: Warehouse3D, config : js
             start_time, drone_nb = drone_initial_selection(drone_last_position, drone_time_follow, drone_battery, row, warehouse, drone_speed, object_time_treatment, lower_threshold)
 
             if not drone_nb:  # If no drone has enough battery for the current task
-                best_finish_time, best_task, best_task_type, time_for_charge, battery_gain = drone_empty_battery_selection(drone_quantity, csv, drone_battery, planning, warehouse, drone_last_position, drone_speed,drone_time_follow, charge_speed, object_time_treatment, lower_threshold,max_fly_time)
+                best_finish_time, best_task, best_task_type, time_for_charge, battery_gain = drone_empty_battery_selection(drone_quantity, csv, drone_battery, planning, warehouse, drone_last_position, drone_speed,drone_time_follow, charge_speed, object_time_treatment, lower_threshold,max_fly_time,mapping_config)
                 drone_time_follow, drone_battery = drone_charging_process(drone_time_follow, drone_battery,battery_gain, time_for_charge, max_fly_time, upper_threshold,"")
 
                 for drone in drone_time_follow.keys():  # Assign tasks to drones
@@ -593,37 +611,36 @@ def create_drone_schedule(csv: pd.DataFrame, warehouse: Warehouse3D, config : js
 
                     planning = full_task_treatment(drone_time_follow, drone, None, planning, task_path_2, warehouse,
                                                    drone_last_position, drone_speed, drone_battery, task_type_2,
-                                                   object_time_treatment, rc_path_2, task_id_2, csv, index_2, max_fly_time)
+                                                   object_time_treatment, rc_path_2, task_id_2, csv, index_2, max_fly_time, mapping_config)
 
             else:  # If a drone is available in terms of battery
                 start_time_absolute = datetime.combine(datetime.today().date(), task_start_time)
 
                 if drone_time_follow[drone_nb] is not None and drone_time_follow[drone_nb] < start_time_absolute:  # If there is time to charge before the task starts
                     time_for_charge, battery_gain = delta_battery(drone_time_follow[drone_nb], charge_speed, start_time_absolute)
-                    drone_time_follow, drone_battery = drone_charging_process(drone_time_follow, drone_battery,
-                                                                              battery_gain, time_for_charge,
-                                                                              max_fly_time, upper_threshold, drone_nb, True)
+                    drone_time_follow, drone_battery = drone_charging_process(drone_time_follow, drone_battery, battery_gain, time_for_charge, max_fly_time, upper_threshold, drone_nb, True)
 
                 planning = full_task_treatment(drone_time_follow, drone_nb, start_time, planning, task_path, warehouse,
                                                drone_last_position, drone_speed, drone_battery, task_type,
-                                               object_time_treatment, rc_path, task_id, csv, index, max_fly_time)
+                                               object_time_treatment, rc_path, task_id, csv, index, max_fly_time, mapping_config)
 
     return planning
 
 
-def schedule(warehouse: Warehouse3D, config : json) -> Dict[str, pd.DataFrame]:
+def schedule(warehouse: Warehouse3D, config : json, mapping_config :json) -> Dict[str, pd.DataFrame]:
     """
     Prepare the schedule for all drones.
 
     Args:
         warehouse: The warehouse object.
         config: Config json of parameters of the planning
+        mapping_config : Config json for task naming
 
     Returns:
         A dictionary of DataFrames representing the schedule for each drone.
     """
     csv_file_name = f'TL_{warehouse.name}.csv'
     csv = prepare_csv(csv_file_name, warehouse, config)
-    drone_schedules = create_drone_schedule(csv, warehouse, config)
+    drone_schedules = create_drone_schedule(csv, warehouse, config, mapping_config)
 
     return drone_schedules

@@ -12,6 +12,13 @@
                 "charger_speed": 2
             }
         }
+    },
+
+    "task_name_mapping": {
+        "positioning": "PO",
+        "arrival": "A",
+        "departure": "D",
+        "return_charge": "RC"
     }
 }
 

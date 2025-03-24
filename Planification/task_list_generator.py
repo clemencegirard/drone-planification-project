@@ -63,7 +63,7 @@ def choose_slot_and_time(times_positions: dict[time, dict[tuple[int, int, int], 
             
     return None, None
 
-def generate_task_list(n_tasks: int, objects: list[Object], arrival_times: list[time], departure_times: list[time], warehouse: Warehouse3D):
+def generate_task_list(n_tasks: int, objects: list[Object], arrival_times: list[time], departure_times: list[time], warehouse: Warehouse3D, mapping_config):
     """Generate a CSV file with n rows of the following format :
 
     object_id  pos0  pos1
@@ -119,7 +119,7 @@ def generate_task_list(n_tasks: int, objects: list[Object], arrival_times: list[
             # If the object is on a shelf, it can only be moved to the departure slots.
             # Else, it means it is at the arrival slots, and it has to be moved to a shelf in the warehouse.
             if object.is_on_shelf :
-                task_type = 'D'
+                task_type = mapping_config['departure']
                 time, departure_pos = choose_slot_and_time(departures)
                 if not time or not departure_pos :
                     logging.info("Warehouse can not ship anymore items for the day")
@@ -129,7 +129,7 @@ def generate_task_list(n_tasks: int, objects: list[Object], arrival_times: list[
                     final_row, final_col, final_height = departure_pos
                     objects_movable.remove(object)
             else :
-                task_type = 'A'
+                task_type = mapping_config['arrival']
                 time, arrival_pos = choose_slot_and_time(arrivals)
                 if not time or not arrival_pos :
                     logging.info("Warehouse can receive no more items for the day")

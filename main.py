@@ -30,7 +30,7 @@ random.seed(seed)
 
 # Load configs
 warehouses_config, category_mapping = load_config_warehouse()
-planning_config = load_config_planning(planning_config_name)
+planning_config, mapping_config = load_config_planning(planning_config_name)
 print(planning_config)
 
 # Build warehouse
@@ -39,7 +39,7 @@ warehouse_3d = build_warehouse(warehouse_name, warehouses_config)
 objects = create_objects_in_warehouse(n_objects, warehouse_3d)
 
 # Build the list of tasks to accomplish during the day.
-task_list_path = generate_task_list(n_tasks, objects, arrival_time_slots, departure_time_slots, warehouse_3d)
+task_list_path = generate_task_list(n_tasks, objects, arrival_time_slots, departure_time_slots, warehouse_3d, mapping_config)
 
 #False by default. If True, will display the warehouse in a plot
 warehouse_3d.display()
@@ -55,7 +55,7 @@ save_adj_matrix(final_adjacency_matrix, warehouse_3d.name)
 # final_adjacency_matrix_2 = main_bellman(final_adjacency_matrix)
 
 # Draw a first naive planning, that minimizes the total flight duration.
-planning_drones = schedule(warehouse_3d, planning_config)
+planning_drones = schedule(warehouse_3d, planning_config, mapping_config)
 
 launch_visualisation_plotly(planning_drones,warehouse_3d)
 
