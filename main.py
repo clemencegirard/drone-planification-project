@@ -14,7 +14,7 @@ from Planification.planification import load_config_planning
 
 ###############  Parameters ###################
 
-warehouse_name = "one_level_U_warehouse"
+warehouse_name = "intermediate_warehouse_v2"
 planning_config_name = "planning_test_1"
 n_objects = 10
 n_tasks = 14
