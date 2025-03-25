@@ -6,12 +6,12 @@ import random
 from tqdm import tqdm
 from Evitement.avoidance import *
 
-def plot_evolution(data, xlabel, ylabel, title, save_path=None):
+def plot_evolution(data, xlabel, ylabel, title, y_log=False, save_path=None):
     plt.figure()
     plt.plot(data)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-    plt.yscale('log')
+    if y_log == True : plt.yscale('log')
     plt.title(title)
     if save_path:
         plt.savefig(save_path)
@@ -68,9 +68,9 @@ def simulated_annealing(results_dir: str, planning: Dict[str, pd.DataFrame], dro
     pbar.close()
 
     # Plot evolutions
-    plot_evolution(costs_evol, "Iterations", "Cost", "Cost evolution", os.path.join(results_dir, "cost_evolutions"))
-    plot_evolution(temp_evol, "Iterations", "Temperature", "Temperature evolution", os.path.join(results_dir, "temp_evolutions"))
-    plot_evolution(accept_evol, "Steps", "Acceptation rate", "Acceptation rate evolution", os.path.join(results_dir, "acceptance_rate_evolutions"))
+    plot_evolution(costs_evol, "Iterations", "Cost", "Cost evolution", True, os.path.join(results_dir, "cost_evolutions"))
+    plot_evolution(temp_evol, "Iterations", "Temperature", "Temperature evolution", False, os.path.join(results_dir, "temp_evolutions"))
+    plot_evolution(accept_evol, "Steps", "Acceptation rate", "Acceptation rate evolution", True, os.path.join(results_dir, "acceptance_rate_evolutions"))
 
     return best_planning
 
