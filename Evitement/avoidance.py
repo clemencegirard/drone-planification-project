@@ -197,32 +197,29 @@ def compute_cost(drone_data: Dict[str, pd.DataFrame], drone_speed: int, charging
     start_times = []
     end_times = []
 
-    for df in drone_data.values():
+    total_duration = 0
+    total_recharge_time = 0
 
-        total_time = 0
-        last_valid_time = None  # Last time not charging
-        in_recharge = False
+    #Get total flight duration for every drone and sum up
+    for drone, df in drone_data.items():
+        df["time"] = pd.to_datetime(df["time"])
+        min_time = df["time"].min()
+        max_time = df["time"].max()
+        duration = (max_time - min_time).total_seconds()
+        total_duration += duration
+
+        df["next_task"] = df["task_type"].shift(-1)
+        df["next_time"] = df["time"].shift(-1)
+
+        recharge_intervals = df[(df["task_type"] == "RC") & (df["next_task"] == "PO")]
         
-        df = df.copy()
-        df['time'] = pd.to_datetime(df['time'], format='%H:%M:%S')
+        #Force datetime type for substraction
+        recharge_intervals["next_time"] = pd.to_datetime(recharge_intervals["next_time"], errors='coerce')
+        recharge_intervals["time"] = pd.to_datetime(recharge_intervals["time"], errors='coerce')
 
-        start_times.append(df.iloc[0]["time"])  # First task start time
-        end_times.append(df.iloc[-1]["time"])   # Last task end time
-
-        for i, row in df.iterrows():
-            if row['task_type'] == 'RC':  
-                in_recharge = True  # Start charging, we stop the count
-            elif in_recharge and row['task_type'] != 'RC':  
-                # Drone leaves the charging station, counter starts back
-                in_recharge = False
-                last_valid_time = row['time']
-            elif not in_recharge and last_valid_time is not None:
-                # Sum up time actually flying
-                total_time += (row['time'] - last_valid_time).total_seconds() / 60
-                last_valid_time = row['time']
-
-        total_flight_time += float(total_time)
-    
+        recharge_time = (recharge_intervals["next_time"] - recharge_intervals["time"]).sum().total_seconds()
+        total_recharge_time += recharge_time
+        
     # Gets collisions
     direct_collisions_df, crossing_collisions_df = count_direct_collisions(drone_data, charging_station_position), count_calculated_collisions(drone_data, drone_speed, charging_station_position, time_step)
     total_collisions = len(direct_collisions_df) + len(crossing_collisions_df)
@@ -231,17 +228,7 @@ def compute_cost(drone_data: Dict[str, pd.DataFrame], drone_speed: int, charging
     near_misses = detect_near_misses(drone_data, drone_speed, charging_station_position, threshold, time_step)
     number_near_misses = len(near_misses)
 
-    # Gets total duration to complete today's tasks
-    start_times = [datetime.strptime(str(t), "%H:%M:%S") if isinstance(t, str) else t for t in start_times]
-    end_times = [datetime.strptime(str(t), "%H:%M:%S") if isinstance(t, str) else t for t in end_times]
-    total_duration = (max(end_times) - min(start_times)).total_seconds()
-
-    return total_flight_time + (total_collisions * collision_penalty) + (number_near_misses * avoidance_penalty) + (total_duration * total_duration_penalty)
-
-    # Gets total duration to complete today's tasks
-    start_times = [datetime.strptime(str(t), "%H:%M:%S") if isinstance(t, str) else t for t in start_times]
-    end_times = [datetime.strptime(str(t), "%H:%M:%S") if isinstance(t, str) else t for t in end_times]
-    total_duration = (max(end_times) - min(start_times)).total_seconds()
+    total_flight_time = total_duration - total_recharge_time
 
     return total_flight_time + (total_collisions * collision_penalty) + (number_near_misses * avoidance_penalty) + (total_duration * total_duration_penalty)
 

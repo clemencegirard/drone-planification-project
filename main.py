@@ -27,6 +27,9 @@ T_init = 30
 T_freeze = 5
 alpha_T = 0.9
 k_iter = 10
+T_freeze = 0.1
+alpha_T = 0.98
+k_iter = 15
 
 seed = 29
 
@@ -70,7 +73,7 @@ launch_visualisation_plotly(planning_drones,warehouse_3d)
 print(planning_drones)
 
 # Check if it respects the condition of no collisions and no near misses.
-##Collision andnenar misses parameters
+##Collision and near misses parameters
 time_step = (60 // planning_config['drone_speed'])
 threshold = 1 #security distance threshold. A value of 1 means that drones separated by 1 cell in the grid will be detected as near misses.
 charging_station_position = tuple(warehouses_config[warehouse_name]['charging_station'][0]) #Filters out collisions happening on the charging station
