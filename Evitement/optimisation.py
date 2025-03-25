@@ -11,6 +11,7 @@ def plot_evolution(data, xlabel, ylabel, title, save_path=None):
     plt.plot(data)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
+    plt.yscale('log')
     plt.title(title)
     if save_path:
         plt.savefig(save_path)
