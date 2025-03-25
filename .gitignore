@@ -1,0 +1,11 @@
+.venv/
+.DS_Store
+__pycache__/
+.Miniconda3-latest-MacOSX-x86_64
+*.pyc
+Miniconda3-latest-MacOSX-x86_64.sh
+Visualisation/HTML_files/drones_animation/
+/Evitement/__pycache__
+/Planification/__pycache__
+/Visualisation/__pycache__
+/Warehouse/__pycache__
