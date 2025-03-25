@@ -4,6 +4,7 @@ from typing import Dict
 import itertools
 from shapely.geometry import LineString
 import random
+import time
 
 # Generates trajectories segments
 def get_segments(df):
@@ -191,16 +192,20 @@ def detect_near_misses(drone_data, drone_speed, charging_station_position, thres
 
     return near_misses_df
 
-def compute_cost(drone_data: Dict[str, pd.DataFrame], drone_speed: int, charging_station_position: tuple, threshold: int, time_step: float, collision_penalty: float = 100.0, avoidance_penalty: float = 10.0, total_duration_penalty: float = 1.0) -> float:
+
+
+
+def compute_cost(drone_data: Dict[str, pd.DataFrame], drone_speed: int, charging_station_position: tuple,
+                 threshold: int, time_step: float, collision_penalty: float = 100.0, avoidance_penalty: float = 10.0,
+                 total_duration_penalty: float = 1.0) -> float:
     """Compute cost of the total time of flight time, add a penalty weighted by the number of collision"""
-    total_flight_time = 0
-    start_times = []
-    end_times = []
+
+    # start_time = time.time()  # Enregistre l'heure de début
 
     total_duration = 0
     total_recharge_time = 0
 
-    #Get total flight duration for every drone and sum up
+    # Get total flight duration for every drone and sum up
     for drone, df in drone_data.items():
         df["time"] = pd.to_datetime(df["time"])
         min_time = df["time"].min()
@@ -212,16 +217,18 @@ def compute_cost(drone_data: Dict[str, pd.DataFrame], drone_speed: int, charging
         df["next_time"] = df["time"].shift(-1)
 
         recharge_intervals = df[(df["task_type"] == "RC") & (df["next_task"] == "PO")]
-        
-        #Force datetime type for substraction
+
+        # Force datetime type for subtraction
         recharge_intervals.loc[:, "next_time"] = pd.to_datetime(recharge_intervals["next_time"], errors='coerce')
         recharge_intervals.loc[:, "time"] = pd.to_datetime(recharge_intervals["time"], errors='coerce')
 
         recharge_time = (recharge_intervals["next_time"] - recharge_intervals["time"]).sum().total_seconds()
         total_recharge_time += recharge_time
-        
+
     # Gets collisions
-    direct_collisions_df, crossing_collisions_df = count_direct_collisions(drone_data, charging_station_position), count_calculated_collisions(drone_data, drone_speed, charging_station_position, time_step)
+    direct_collisions_df, crossing_collisions_df = count_direct_collisions(drone_data,
+                                                                           charging_station_position), count_calculated_collisions(
+        drone_data, drone_speed, charging_station_position, time_step)
     total_collisions = len(direct_collisions_df) + len(crossing_collisions_df)
 
     # Gets near misses
@@ -230,7 +237,11 @@ def compute_cost(drone_data: Dict[str, pd.DataFrame], drone_speed: int, charging
 
     total_flight_time = total_duration - total_recharge_time
 
-    return total_flight_time + (total_collisions * collision_penalty) + (number_near_misses * avoidance_penalty) + (total_duration * total_duration_penalty)
+
+
+    return total_flight_time + (total_collisions * collision_penalty) + (number_near_misses * avoidance_penalty) + (
+                total_duration * total_duration_penalty)
+
 
 def change_planning(planning: Dict[str, pd.DataFrame],heuristic: int, direct_collisions: pd.DataFrame, calculated_collisions: pd.DataFrame, near_misses: pd.DataFrame):
     if heuristic == 1 :
@@ -244,6 +255,9 @@ def change_planning(planning: Dict[str, pd.DataFrame],heuristic: int, direct_col
     
 def make_new_planning(planning: Dict[str, pd.DataFrame], drone_speed: int, charging_station_position: tuple, threshold: int, time_step: float):
     direct_collisions = count_direct_collisions(planning, charging_station_position)
+
+    # start_time = time.time()
+
     calculated_collisions = count_calculated_collisions(planning, drone_speed, charging_station_position, time_step)
     near_misses = detect_near_misses(planning, drone_speed, charging_station_position, threshold, time_step)
 
@@ -260,6 +274,11 @@ def make_new_planning(planning: Dict[str, pd.DataFrame], drone_speed: int, charg
     else : heuristic = 0
 
     new_planning = change_planning(planning, heuristic, direct_collisions, calculated_collisions, near_misses)
+
+    # Calcul du temps d'exécution
+    # execution_time = time.time() - start_time  # Temps d'exécution
+    #
+    # print(f"Temps d'exécution new planning : {execution_time:.4f} secondes")
 
     return new_planning
 

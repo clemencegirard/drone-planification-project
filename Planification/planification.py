@@ -344,7 +344,7 @@ def drone_initial_selection(drone_last_position: Dict[str, Tuple[int, int, int]]
 
         drone_battery_seconds = drone_battery[drone_nb].total_seconds() if isinstance(drone_battery[drone_nb],timedelta) else drone_battery[drone_nb]
 
-        if drone_battery_seconds >= total_battery_required and (drone_battery_seconds - total_battery_required) > lower_threshold*drone_battery_seconds:
+        if drone_battery_seconds >= total_battery_required and (drone_battery_seconds - total_battery_required) >= lower_threshold*drone_battery_seconds:
             # Determine the next availability of the drone
             drone_available_time = max(drone_time_follow[drone_nb], task_start_time) if drone_time_follow[drone_nb] else task_start_time
 
