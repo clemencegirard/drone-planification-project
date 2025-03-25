@@ -214,8 +214,8 @@ def compute_cost(drone_data: Dict[str, pd.DataFrame], drone_speed: int, charging
         recharge_intervals = df[(df["task_type"] == "RC") & (df["next_task"] == "PO")]
         
         #Force datetime type for substraction
-        recharge_intervals["next_time"] = pd.to_datetime(recharge_intervals["next_time"], errors='coerce')
-        recharge_intervals["time"] = pd.to_datetime(recharge_intervals["time"], errors='coerce')
+        recharge_intervals.loc[:, "next_time"] = pd.to_datetime(recharge_intervals["next_time"], errors='coerce')
+        recharge_intervals.loc[:, "time"] = pd.to_datetime(recharge_intervals["time"], errors='coerce')
 
         recharge_time = (recharge_intervals["next_time"] - recharge_intervals["time"]).sum().total_seconds()
         total_recharge_time += recharge_time
