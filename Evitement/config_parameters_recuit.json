@@ -1,4 +1,14 @@
-{   "config-0": {
+{   "config-H": {
+        "collision_penalty": 10000,
+        "avoidance_penalty": 1000,
+        "total_duration_penalty": 0.1,
+        "T_init": 30,
+        "T_freeze": 0.1,
+        "alpha_T": 0.9,
+        "k_iter": 1
+    },
+
+    "config-0": {
         "collision_penalty": 0,
         "avoidance_penalty": 0,
         "total_duration_penalty": 0,
@@ -78,25 +88,6 @@
         "k_iter": 9
     },
 
-    "config-H": {
-        "collision_penalty": 7500,
-        "avoidance_penalty": 200,
-        "total_duration_penalty": 0.4,
-        "T_init": 35,
-        "T_freeze": 1,
-        "alpha_T": 0.89,
-        "k_iter": 7
-    },
-
-    "config-I": {
-        "collision_penalty": 5500,
-        "avoidance_penalty": 900,
-        "total_duration_penalty": 0.8,
-        "T_init": 70,
-        "T_freeze": 4,
-        "alpha_T": 0.91,
-        "k_iter": 2
-    },
 
     "config-J": {
         "collision_penalty": 9800,

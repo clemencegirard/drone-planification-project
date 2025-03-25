@@ -1,7 +1,7 @@
 {
     "planning": {
         "planning_test_1" : {
-            "drone_quantity": 2,
+            "drone_quantity": 3,
             "object_time_treatment": 30,
             "drone_speed": 3,
             "battery": {
