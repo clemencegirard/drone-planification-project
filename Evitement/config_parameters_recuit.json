@@ -1,0 +1,86 @@
+{
+    "config-0": {
+        "collision_penalty": 10000.0,
+        "avoidance_penalty": 1000.0,
+        "total_duration_penalty": 0.1,
+        "T_init": 30,
+        "T_freeze": 0.1,
+        "alpha_T": 0.98,
+        "k_iter": 15
+    },
+
+    "config-1": {
+        "collision_penalty": 10000.0,
+        "avoidance_penalty": 1000.0,
+        "total_duration_penalty": 0.1,
+        "T_init": 100,
+        "T_freeze": 10,
+        "alpha_T": 0.95,
+        "k_iter": 50
+    },
+    "config-2": {
+        "collision_penalty": 10000.0,
+        "avoidance_penalty": 1000.0,
+        "total_duration_penalty": 0.1,
+        "T_init": 30,
+        "T_freeze": 2,
+        "alpha_T": 0.98,
+        "k_iter": 30
+    },
+    "config-3": {
+        "collision_penalty": 10000.0,
+        "avoidance_penalty": 1000.0,
+        "total_duration_penalty": 0.1,
+        "T_init": 10,
+        "T_freeze": 10,
+        "alpha_T": 0.90,
+        "k_iter": 100
+    },
+    "config-4": {
+        "collision_penalty": 10000.0,
+        "avoidance_penalty": 1000.0,
+        "total_duration_penalty": 0.1,
+        "T_init": 50,
+        "T_freeze": 5,
+        "alpha_T": 0.85,
+        "k_iter": 100
+    },
+    "config-5": {
+        "collision_penalty": 10000.0,
+        "avoidance_penalty": 1000.0,
+        "total_duration_penalty": 0.1,
+        "T_init": 20,
+        "T_freeze": 0.5,
+        "alpha_T": 0.99,
+        "k_iter": 15
+    },
+    "config-6": {
+        "collision_penalty": 10000.0,
+        "avoidance_penalty": 1000.0,
+        "total_duration_penalty": 0.1,
+        "T_init": 15,
+        "T_freeze": 4,
+        "alpha_T": 0.92,
+        "k_iter": 60
+    },
+
+    "config-7": {
+        "collision_penalty": 10000.0,
+        "avoidance_penalty": 1000.0,
+        "total_duration_penalty": 0.1,
+        "T_init": 80,
+        "T_freeze": 7,
+        "alpha_T": 0.93,
+        "k_iter": 40
+    },
+
+    "config-8": {
+        "collision_penalty": 10000.0,
+        "avoidance_penalty": 1000.0,
+        "total_duration_penalty": 0.1,
+        "T_init": 100,
+        "T_freeze": 20,
+        "alpha_T": 0.99,
+        "k_iter": 5
+    }
+}

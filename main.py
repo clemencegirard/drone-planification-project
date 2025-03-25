@@ -1,6 +1,7 @@
 ###############  Import section ###################
 
 from datetime import time, datetime
+import json
 import random
 import os
 from Planification.adjacency_matrix import *
@@ -14,22 +15,27 @@ from Planification.planification import load_config_planning
 
 ###############  Parameters ###################
 
-warehouse_name = "intermediate_warehouse_v2"
+warehouse_name = "warehouse1"
 planning_config_name = "planning_test_1"
 n_objects = 10
 n_tasks = 14
 arrival_time_slots = [time(8,0,0)]
 departure_time_slots = [time(14,0,0)]
-collision_penalty = 0
-avoidance_penalty = 0
-total_duration_penalty = 0
-T_init = 30
-T_freeze = 5
-alpha_T = 0.9
-k_iter = 10
-T_freeze = 0.1
-alpha_T = 0.98
-k_iter = 15
+
+with open('Evitement/config_parameters_recuit.json', 'r') as file:
+    configs_param = json.load(file)
+
+config_name = 'config-8' #Choose the parameters configuration to use for the Simulated Annealing
+config = configs_param[config_name]
+
+# Accéder aux paramètres
+collision_penalty = config["collision_penalty"]
+avoidance_penalty = config["avoidance_penalty"]
+total_duration_penalty = config["total_duration_penalty"]
+T_init = config["T_init"]
+T_freeze = config["T_freeze"]
+alpha_T = config["alpha_T"]
+k_iter = config["k_iter"]
 
 seed = 29
 
