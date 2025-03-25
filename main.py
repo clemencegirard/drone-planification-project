@@ -16,14 +16,17 @@ from Planification.planification import load_config_planning
 
 warehouse_name = "intermediate_warehouse_v2"
 planning_config_name = "planning_test_1"
-n_objects = 10
-n_tasks = 14
+n_objects = 20
+n_tasks = 30
 arrival_time_slots = [time(8,0,0)]
 departure_time_slots = [time(14,0,0)]
 collision_penalty = 10000.0
 avoidance_penalty = 1000.0
 total_duration_penalty = 0.01
 T_init = 30
+T_freeze = 5
+alpha_T = 0.9
+k_iter = 10
 T_freeze = 0.1
 alpha_T = 0.98
 k_iter = 15
