@@ -3,7 +3,7 @@
         "planning_test_1" : {
             "drone_quantity": 3,
             "object_time_treatment": 30,
-            "drone_speed": 3,
+            "drone_speed": 2,
             "battery": {
                 "max_capacity": 3600,
                 "initial_charge": 3600,

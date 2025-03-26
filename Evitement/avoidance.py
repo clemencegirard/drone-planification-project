@@ -192,9 +192,6 @@ def detect_near_misses(drone_data, drone_speed, charging_station_position, thres
 
     return near_misses_df
 
-
-
-
 def compute_cost(drone_data: Dict[str, pd.DataFrame], drone_speed: int, charging_station_position: tuple,
                  threshold: int, time_step: float, collision_penalty: float = 100.0, avoidance_penalty: float = 10.0,
                  total_duration_penalty: float = 1.0) -> float:
@@ -361,8 +358,9 @@ def get_battery_at_time(planning: Dict[str, pd.DataFrame], drone: str, collision
 def fix_direct_collisions_time(planning_drone: Dict[str, pd.DataFrame], collisions: pd.DataFrame):
     # Create a copy of the planning to change
     new_planning = planning_drone.copy()
-    # Fix the first collision of the list
-    collision = collisions.iloc[0]
+    # Fix one collision of the list
+    collision_to_fix_index = random.choice([i for i in range(0, len(collisions))])
+    collision = collisions.iloc[collision_to_fix_index]
     collision_time = collision['time']
     drones = collision['drones']
 
@@ -395,8 +393,9 @@ def fix_direct_collisions_time(planning_drone: Dict[str, pd.DataFrame], collisio
 def fix_calulated_collisions_time(planning_drone: Dict[str, pd.DataFrame], collisions: pd.DataFrame):
     # Create a copy of the planning to change
     new_planning = planning_drone.copy()
-    # Fix the first collision of the list
-    collision = collisions.iloc[0]
+    # Fix one collision of the list
+    collision_to_fix_index = random.choice([i for i in range(0, len(collisions))])
+    collision = collisions.iloc[collision_to_fix_index]
     collision_time = collision['collision_time']
     drone1, drone2 = collision['drone1'], collision['drone2']
 
@@ -414,8 +413,9 @@ def fix_near_misses_time(planning_drone: Dict[str, pd.DataFrame], near_misses: p
     # Create a copy of the planning to change
     new_planning = planning_drone.copy()
 
-    # Fix the first near miss of the list
-    near_miss = near_misses.iloc[0]
+    # Fix one collision of the list
+    near_miss_to_fix_index = random.choice([i for i in range(0, len(near_misses))])
+    near_miss = near_misses.iloc[near_miss_to_fix_index]
     near_miss_time = near_miss['time']
     drone1, drone2 = near_miss['drone1'], near_miss['drone2']
 
