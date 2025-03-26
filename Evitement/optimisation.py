@@ -6,6 +6,7 @@ import random
 from tqdm import tqdm
 from Evitement.avoidance import *
 
+# Plots a given data.
 def plot_evolution(data, xlabel, ylabel, title, y_log=False, save_path=None):
     plt.figure()
     plt.plot(data)
@@ -18,11 +19,13 @@ def plot_evolution(data, xlabel, ylabel, title, y_log=False, save_path=None):
         plt.close()
     plt.show()
 
+# Metropolis acceptance criterion.
 def metropolis_acceptance(current_cost, new_cost, temp):
     if new_cost < current_cost:
         return True
     return random.uniform(0, 1) < np.exp((current_cost - new_cost) / temp)
 
+# Simulated annealing to find a planning solution that minimizes the cost function.
 def simulated_annealing(results_dir: str, planning: Dict[str, pd.DataFrame], drone_speed: int, charging_station_position: tuple, threshold: int, time_step: float, collision_penalty: float, avoidance_penalty: float, total_duration_penalty: float, t_initial: float = 1000, t_freeze: float = 0.1, alpha: float = 0.9, iterations_per_temp = 500):
 
     # Intitialisation
@@ -44,8 +47,8 @@ def simulated_annealing(results_dir: str, planning: Dict[str, pd.DataFrame], dro
     while temp > t_freeze :
 
         acceptances = 0
-        # Explore solutions at constant temperature
 
+        # Explore solutions at constant temperature
         for _ in range(iterations_per_temp) :
 
             # Generate a slightly different new planning

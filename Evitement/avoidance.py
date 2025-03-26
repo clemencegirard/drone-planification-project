@@ -239,7 +239,7 @@ def compute_cost(drone_data: Dict[str, pd.DataFrame], drone_speed: int, charging
     return total_flight_time + (total_collisions * collision_penalty) + (number_near_misses * avoidance_penalty) + (
                 total_duration * total_duration_penalty)
 
-
+# Change the drone planning to another close solution, using the given heuristic.
 def change_planning(planning: Dict[str, pd.DataFrame],heuristic: int, direct_collisions: pd.DataFrame, calculated_collisions: pd.DataFrame, near_misses: pd.DataFrame):
     if heuristic == 1 :
         return fix_direct_collisions_time(planning, direct_collisions)
@@ -249,12 +249,11 @@ def change_planning(planning: Dict[str, pd.DataFrame],heuristic: int, direct_col
         return fix_near_misses_time(planning, near_misses)
     
     return planning
-    
+
+# Create a new solution for the simulated annealing.
 def make_new_planning(planning: Dict[str, pd.DataFrame], drone_speed: int, charging_station_position: tuple, threshold: int, time_step: float):
+    # Identify collisions and near misses that make the solution not acceptable.
     direct_collisions = count_direct_collisions(planning, charging_station_position)
-
-    # start_time = time.time()
-
     calculated_collisions = count_calculated_collisions(planning, drone_speed, charging_station_position, time_step)
     near_misses = detect_near_misses(planning, drone_speed, charging_station_position, threshold, time_step)
 
@@ -272,13 +271,10 @@ def make_new_planning(planning: Dict[str, pd.DataFrame], drone_speed: int, charg
 
     new_planning = change_planning(planning, heuristic, direct_collisions, calculated_collisions, near_misses)
 
-    # Calcul du temps d'exécution
-    # execution_time = time.time() - start_time  # Temps d'exécution
-    #
-    # print(f"Temps d'exécution new planning : {execution_time:.4f} secondes")
-
     return new_planning
 
+# Fix a calculated collision by modifying one of the drone's trajectory.
+# NOT USED FOR NOW.
 def fix_calculated_collisions_bypass(planning: Dict[str, pd.DataFrame], calculated_collisions: pd.DataFrame, drone_speed : int):
     new_planning = planning.copy()
 
@@ -299,6 +295,7 @@ def fix_calculated_collisions_bypass(planning: Dict[str, pd.DataFrame], calculat
 
     return new_planning
 
+# Change a drone's trajectory to bypass an obstacle.
 def bypass_obstacle(planning: pd.DataFrame, start_pos: tuple[int, int, int], start_pos_time: str, dimension_index: int, drone_speed: int) :
     # Find the index of the start position
     start_pos_time = start_pos_time.time()
@@ -347,6 +344,7 @@ def bypass_obstacle(planning: pd.DataFrame, start_pos: tuple[int, int, int], sta
 
     return new_planning
 
+# Retrieve a drone's level of battery at a given time.
 def get_battery_at_time(planning: Dict[str, pd.DataFrame], drone: str, collision_time: str) -> float:
     df = planning[drone].copy()
     df['time'] = pd.to_datetime(df['time'])
@@ -355,6 +353,7 @@ def get_battery_at_time(planning: Dict[str, pd.DataFrame], drone: str, collision
     closest_row = df.loc[(df['time'] - collision_time).abs().idxmin()]
     return closest_row['battery_percentage']
 
+# Fix a direct collision by delaying one of the drones involved.
 def fix_direct_collisions_time(planning_drone: Dict[str, pd.DataFrame], collisions: pd.DataFrame):
     # Create a copy of the planning to change
     new_planning = planning_drone.copy()
@@ -390,6 +389,7 @@ def fix_direct_collisions_time(planning_drone: Dict[str, pd.DataFrame], collisio
     
     return new_planning
 
+# Fix a calculated collision by delaying one of the drones involved.
 def fix_calulated_collisions_time(planning_drone: Dict[str, pd.DataFrame], collisions: pd.DataFrame):
     # Create a copy of the planning to change
     new_planning = planning_drone.copy()
@@ -409,6 +409,7 @@ def fix_calulated_collisions_time(planning_drone: Dict[str, pd.DataFrame], colli
     
     return new_planning
 
+# Fix a near miss by delaying one of the drones involved.
 def fix_near_misses_time(planning_drone: Dict[str, pd.DataFrame], near_misses: pd.DataFrame):
     # Create a copy of the planning to change
     new_planning = planning_drone.copy()
@@ -429,7 +430,8 @@ def fix_near_misses_time(planning_drone: Dict[str, pd.DataFrame], near_misses: p
     new_planning[drone] = push_back_transit_times(planning_drone, near_miss_time, time_offset=2)
 
     return new_planning
-    
+
+# Delay a given drone's planning for one task, between two visits at the charging station.
 def push_back_transit_times(planning: pd.DataFrame, collision_time: pd.Timestamp, time_offset: int):
     # Find the index of the collision
     collision_time_index = planning.index[planning['time'] == collision_time].tolist()
