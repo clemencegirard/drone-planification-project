@@ -19,13 +19,13 @@ from Visualisation.animation import launch_visualisation_plotly
 
 warehouse_name = "warehouse1"
 planning_config_name = "planning_test_1"
-n_objects = 10
-n_tasks = 14
+n_objects = 60
+n_tasks = 80
 arrival_time_slots = [time(8, 0, 0)]
 departure_time_slots = [time(14, 0, 0)]
 
 seed = 29
-verbose = False  # Mettre False pour désactiver les print
+verbose = True  # Mettre False pour désactiver les print
 
 ###############  Code principal ###################
 
@@ -60,6 +60,9 @@ save_adj_matrix(final_adjacency_matrix, warehouse_3d.name)
 
 # Génération du planning initial
 planning_drones = schedule(warehouse_3d, planning_config, mapping_config)
+
+if verbose:
+    print('Planning initial:', planning_drones)
 
 launch_visualisation_plotly(planning_drones, warehouse_3d)
 

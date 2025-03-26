@@ -1,0 +1,2 @@
+Configuration: config-E
+Initial cost: 84384.0
