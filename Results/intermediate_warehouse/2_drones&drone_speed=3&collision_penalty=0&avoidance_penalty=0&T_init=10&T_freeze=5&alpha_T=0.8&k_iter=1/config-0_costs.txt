@@ -1,0 +1,4 @@
+Configuration: config-0
+Initial cost: 10960.0
+Final cost: 10720.0
+Respect constraints: False
