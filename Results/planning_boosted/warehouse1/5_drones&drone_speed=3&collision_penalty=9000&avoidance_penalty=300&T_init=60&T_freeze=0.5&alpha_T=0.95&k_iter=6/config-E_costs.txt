@@ -1,0 +1,4 @@
+Configuration: config-E
+Initial cost: 2326212.0
+Final cost: 80424.0
+Respect constraints: False

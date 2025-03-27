@@ -1,0 +1,4 @@
+Configuration: config-F
+Initial cost: 1300064.0
+Final cost: 240454.0
+Respect constraints: False
