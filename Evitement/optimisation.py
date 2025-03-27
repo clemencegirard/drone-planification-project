@@ -76,9 +76,9 @@ def simulated_annealing(results_dir: str, planning: Dict[str, pd.DataFrame], dro
     pbar.close()
 
     # Plot evolutions
-    plot_evolution(costs_evol, "Iterations", "Cost", "Cost evolution", True, os.path.join(results_dir, "cost_evolutions"))
+    plot_evolution(costs_evol, "Iterations", "Cost", "Cost evolution", False, os.path.join(results_dir, "cost_evolutions"))
     plot_evolution(temp_evol, "Iterations", "Temperature", "Temperature evolution", False, os.path.join(results_dir, "temp_evolutions"))
-    plot_evolution(accept_evol, "Steps", "Acceptation rate", "Acceptation rate evolution", True, os.path.join(results_dir, "acceptance_rate_evolutions"))
+    plot_evolution(accept_evol, "Steps", "Acceptation rate", "Acceptation rate evolution", False, os.path.join(results_dir, "acceptance_rate_evolutions"))
 
     return best_planning
 
