@@ -1,0 +1,4 @@
+Configuration: config-G
+Initial cost: 1586296.0
+Final cost: 99368.0
+Respect constraints: False
