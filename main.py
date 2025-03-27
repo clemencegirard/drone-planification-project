@@ -15,13 +15,12 @@ from Evitement.avoidance import (
 from Evitement.optimisation import find_optimal_solution
 from Visualisation.animation import launch_visualisation_plotly
 import copy
+import pandas as pd
 
 ###############  Parameters ###################
 
 # warehouse_name = "intermediate_warehouse_v2"
-planning_config_name = "planning_test_1"
-n_objects = 10
-n_tasks = 14
+planning_config_name = "planning_boosted"
 arrival_time_slots = [time(8, 0, 0)]
 departure_time_slots = [time(14, 0, 0)]
 
@@ -38,17 +37,18 @@ random.seed(seed)
 warehouses_config, category_mapping = load_config_warehouse()
 planning_config, mapping_config = load_config_planning(planning_config_name)
 
-for warehouse_name in list(warehouses_config.keys())[:1] :
+# for warehouse_name in list(warehouses_config.keys()) :
+for warehouse_name in ['warehouse1'] :
 
     if verbose:
         print(planning_config)
 
     # Build warehouse
     warehouse_3d = build_warehouse(warehouse_name, warehouses_config)
-    objects = create_objects_in_warehouse(n_objects, warehouse_3d)
+    objects = create_objects_in_warehouse(planning_config["n_objects"], warehouse_3d)
 
     # Build the list of tasks to accomplish during the day.
-    task_list_path = generate_task_list(n_tasks, objects, arrival_time_slots, departure_time_slots, warehouse_3d,
+    task_list_path = generate_task_list(planning_config["n_tasks"], objects, arrival_time_slots, departure_time_slots, warehouse_3d,
                                         mapping_config)
 
     # Affichage optionnel du warehouse
@@ -120,11 +120,12 @@ for warehouse_name in list(warehouses_config.keys())[:1] :
 
         experience = f"{planning_config['drone_quantity']}_drones&drone_speed={planning_config['drone_speed']}&collision_penalty={collision_penalty}&avoidance_penalty={avoidance_penalty}&T_init={T_init}&T_freeze={T_freeze}&alpha_T={alpha_T}&k_iter={k_iter}"
 
-        results_dir = os.path.join("Results", warehouse_name, experience)
+        results_dir = os.path.join("Results", planning_config_name, warehouse_name, experience)
         os.makedirs(results_dir, exist_ok=True)
 
         # Chemin du fichier où enregistrer les résultats
         results_file_path = os.path.join(results_dir, f"{config_name}_costs.txt")
+        final_planning_file_path = os.path.join(results_dir, f"{config_name}_final_planning.json")
 
         # Sauvegarde des coûts initiaux
         with open(results_file_path, "w") as file:
@@ -144,6 +145,10 @@ for warehouse_name in list(warehouses_config.keys())[:1] :
         with open(results_file_path, "a") as file:  # "a" pour ajouter à la suite du fichier
             file.write(f"Final cost: {final_cost}\n")
             file.write(f"Respect constraints: {respect_constraints}\n")
+
+        for key, df in final_planning.items():
+            file_path = os.path.join(results_dir, f"{config_name}_final_planning_{key}.csv")
+            df.to_csv(file_path, index=False)
 
         if verbose:
             print(f"Final planning ({config_name}): ", final_planning)
