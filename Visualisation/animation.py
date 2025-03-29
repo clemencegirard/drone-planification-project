@@ -159,6 +159,9 @@ def launch_visualisation_plotly(planning_drones: Dict[str, Dict[str, List[Tuple[
     current_path = Path(__file__).parent.resolve()
     html_dir = current_path / "HTML_files/drones_animation.html"
 
+    # Ensure the directory exists
+    html_dir.parent.mkdir(parents=True, exist_ok=True)
+
     try:
         fig.write_html(str(html_dir))
         logging.info(f"HTML visualization saved to {html_dir}")
