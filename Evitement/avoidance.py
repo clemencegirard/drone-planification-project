@@ -463,12 +463,25 @@ def push_back_transit_times(planning: pd.DataFrame, collision_time: pd.Timestamp
 
     # If the drone never visits the station after, it's because it's its last trajectory.
     if next_charging_index is None:
-        next_charging_index = len(planning) 
+        last_charging_index = len(planning) 
+    # Find the last index at the charging station for the drone
+    else :
+        for i in range(next_charging_index, len(planning)):
+            if planning.at[i, 'task_type'] == 'RC':
+                last_charging_index = i
+            else:
+                break
 
     # Delay passage time between the two RC times.
-    for i in range(previous_charging_index, next_charging_index+1):
+    for i in range(previous_charging_index, last_charging_index+1):
         new_time = planning.at[i,'time'] + pd.Timedelta(minutes=time_offset)
 
         planning.at[i, 'time'] = new_time
+    
+    # Adjust subsequent tasks if needed to avoid overlaps
+    i = last_charging_index
+    while i + 1 < len(planning) and planning.at[i, 'time'] >= planning.at[i + 1, 'time']:
+        planning.at[i + 1, 'time'] += pd.Timedelta(minutes=time_offset)
+        i += 1
 
     return planning
