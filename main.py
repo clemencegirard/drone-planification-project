@@ -25,7 +25,7 @@ arrival_time_slots = [time(8, 0, 0)]
 departure_time_slots = [time(14, 0, 0)]
 
 seed = 29
-verbose = False  # Mettre False pour désactiver les print
+verbose = True  # Mettre False pour désactiver les print
 
 ###############  Code principal ###################
 
@@ -140,6 +140,8 @@ for warehouse_name in ['warehouse1'] :
             collision_penalty, avoidance_penalty, total_duration_penalty,
             T_init, T_freeze, alpha_T, k_iter, 1
         )
+
+        launch_visualisation_plotly(final_planning, warehouse_3d)
 
         # Sauvegarde du coût final
         with open(results_file_path, "a") as file:  # "a" pour ajouter à la suite du fichier
