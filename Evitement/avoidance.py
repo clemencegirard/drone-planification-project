@@ -4,6 +4,7 @@ from typing import Dict
 import itertools
 from shapely.geometry import LineString
 import random
+import time
 
 # Generates trajectories segments
 def get_segments(df):
@@ -191,60 +192,54 @@ def detect_near_misses(drone_data, drone_speed, charging_station_position, thres
 
     return near_misses_df
 
-def compute_cost(drone_data: Dict[str, pd.DataFrame], drone_speed: int, charging_station_position: tuple, threshold: int, time_step: float, collision_penalty: float = 100.0, avoidance_penalty: float = 10.0, total_duration_penalty: float = 1.0) -> float:
+def compute_cost(drone_data: Dict[str, pd.DataFrame], drone_speed: int, charging_station_position: tuple,
+                 threshold: int, time_step: float, collision_penalty: float = 100.0, avoidance_penalty: float = 10.0,
+                 total_duration_penalty: float = 1.0) -> float:
     """Compute cost of the total time of flight time, add a penalty weighted by the number of collision"""
-    total_flight_time = 0
-    start_times = []
-    end_times = []
 
-    for df in drone_data.values():
+    # start_time = time.time()  # Enregistre l'heure de début
 
-        total_time = 0
-        last_valid_time = None  # Last time not charging
-        in_recharge = False
-        
-        df = df.copy()
-        df['time'] = pd.to_datetime(df['time'], format='%H:%M:%S')
+    total_duration = 0
+    total_recharge_time = 0
 
-        start_times.append(df.iloc[0]["time"])  # First task start time
-        end_times.append(df.iloc[-1]["time"])   # Last task end time
+    # Get total flight duration for every drone and sum up
+    for drone, df in drone_data.items():
+        df["time"] = pd.to_datetime(df["time"])
+        min_time = df["time"].min()
+        max_time = df["time"].max()
+        duration = (max_time - min_time).total_seconds()
+        total_duration += duration
 
-        for i, row in df.iterrows():
-            if row['task_type'] == 'RC':  
-                in_recharge = True  # Start charging, we stop the count
-            elif in_recharge and row['task_type'] != 'RC':  
-                # Drone leaves the charging station, counter starts back
-                in_recharge = False
-                last_valid_time = row['time']
-            elif not in_recharge and last_valid_time is not None:
-                # Sum up time actually flying
-                total_time += (row['time'] - last_valid_time).total_seconds() / 60
-                last_valid_time = row['time']
+        df["next_task"] = df["task_type"].shift(-1)
+        df["next_time"] = df["time"].shift(-1)
 
-        total_flight_time += float(total_time)
-    
+        recharge_intervals = df[(df["task_type"] == "RC") & (df["next_task"] == "PO")]
+
+        # Force datetime type for subtraction
+        recharge_intervals.loc[:, "next_time"] = pd.to_datetime(recharge_intervals["next_time"], errors='coerce')
+        recharge_intervals.loc[:, "time"] = pd.to_datetime(recharge_intervals["time"], errors='coerce')
+
+        recharge_time = (recharge_intervals["next_time"] - recharge_intervals["time"]).sum().total_seconds()
+        total_recharge_time += recharge_time
+
     # Gets collisions
-    direct_collisions_df, crossing_collisions_df = count_direct_collisions(drone_data, charging_station_position), count_calculated_collisions(drone_data, drone_speed, charging_station_position, time_step)
+    direct_collisions_df, crossing_collisions_df = count_direct_collisions(drone_data,
+                                                                           charging_station_position), count_calculated_collisions(
+        drone_data, drone_speed, charging_station_position, time_step)
     total_collisions = len(direct_collisions_df) + len(crossing_collisions_df)
 
     # Gets near misses
     near_misses = detect_near_misses(drone_data, drone_speed, charging_station_position, threshold, time_step)
     number_near_misses = len(near_misses)
 
-    # Gets total duration to complete today's tasks
-    start_times = [datetime.strptime(str(t), "%H:%M:%S") if isinstance(t, str) else t for t in start_times]
-    end_times = [datetime.strptime(str(t), "%H:%M:%S") if isinstance(t, str) else t for t in end_times]
-    total_duration = (max(end_times) - min(start_times)).total_seconds()
+    total_flight_time = total_duration - total_recharge_time
 
-    return total_flight_time + (total_collisions * collision_penalty) + (number_near_misses * avoidance_penalty) + (total_duration * total_duration_penalty)
 
-    # Gets total duration to complete today's tasks
-    start_times = [datetime.strptime(str(t), "%H:%M:%S") if isinstance(t, str) else t for t in start_times]
-    end_times = [datetime.strptime(str(t), "%H:%M:%S") if isinstance(t, str) else t for t in end_times]
-    total_duration = (max(end_times) - min(start_times)).total_seconds()
 
-    return total_flight_time + (total_collisions * collision_penalty) + (number_near_misses * avoidance_penalty) + (total_duration * total_duration_penalty)
+    return total_flight_time + (total_collisions * collision_penalty) + (number_near_misses * avoidance_penalty) + (
+                total_duration * total_duration_penalty)
 
+# Change the drone planning to another close solution, using the given heuristic.
 def change_planning(planning: Dict[str, pd.DataFrame],heuristic: int, direct_collisions: pd.DataFrame, calculated_collisions: pd.DataFrame, near_misses: pd.DataFrame):
     if heuristic == 1 :
         return fix_direct_collisions_time(planning, direct_collisions)
@@ -254,8 +249,10 @@ def change_planning(planning: Dict[str, pd.DataFrame],heuristic: int, direct_col
         return fix_near_misses_time(planning, near_misses)
     
     return planning
-    
+
+# Create a new solution for the simulated annealing.
 def make_new_planning(planning: Dict[str, pd.DataFrame], drone_speed: int, charging_station_position: tuple, threshold: int, time_step: float):
+    # Identify collisions and near misses that make the solution not acceptable.
     direct_collisions = count_direct_collisions(planning, charging_station_position)
     calculated_collisions = count_calculated_collisions(planning, drone_speed, charging_station_position, time_step)
     near_misses = detect_near_misses(planning, drone_speed, charging_station_position, threshold, time_step)
@@ -276,6 +273,8 @@ def make_new_planning(planning: Dict[str, pd.DataFrame], drone_speed: int, charg
 
     return new_planning
 
+# Fix a calculated collision by modifying one of the drone's trajectory.
+# NOT USED FOR NOW.
 def fix_calculated_collisions_bypass(planning: Dict[str, pd.DataFrame], calculated_collisions: pd.DataFrame, drone_speed : int):
     new_planning = planning.copy()
 
@@ -296,6 +295,7 @@ def fix_calculated_collisions_bypass(planning: Dict[str, pd.DataFrame], calculat
 
     return new_planning
 
+# Change a drone's trajectory to bypass an obstacle.
 def bypass_obstacle(planning: pd.DataFrame, start_pos: tuple[int, int, int], start_pos_time: str, dimension_index: int, drone_speed: int) :
     # Find the index of the start position
     start_pos_time = start_pos_time.time()
@@ -344,6 +344,7 @@ def bypass_obstacle(planning: pd.DataFrame, start_pos: tuple[int, int, int], sta
 
     return new_planning
 
+# Retrieve a drone's level of battery at a given time.
 def get_battery_at_time(planning: Dict[str, pd.DataFrame], drone: str, collision_time: str) -> float:
     df = planning[drone].copy()
     df['time'] = pd.to_datetime(df['time'])
@@ -352,11 +353,13 @@ def get_battery_at_time(planning: Dict[str, pd.DataFrame], drone: str, collision
     closest_row = df.loc[(df['time'] - collision_time).abs().idxmin()]
     return closest_row['battery_percentage']
 
+# Fix a direct collision by delaying one of the drones involved.
 def fix_direct_collisions_time(planning_drone: Dict[str, pd.DataFrame], collisions: pd.DataFrame):
     # Create a copy of the planning to change
     new_planning = planning_drone.copy()
-    # Fix the first collision of the list
-    collision = collisions.iloc[0]
+    # Fix one collision of the list
+    collision_to_fix_index = random.choice([i for i in range(0, len(collisions))])
+    collision = collisions.iloc[collision_to_fix_index]
     collision_time = collision['time']
     drones = collision['drones']
 
@@ -386,11 +389,13 @@ def fix_direct_collisions_time(planning_drone: Dict[str, pd.DataFrame], collisio
     
     return new_planning
 
+# Fix a calculated collision by delaying one of the drones involved.
 def fix_calulated_collisions_time(planning_drone: Dict[str, pd.DataFrame], collisions: pd.DataFrame):
     # Create a copy of the planning to change
     new_planning = planning_drone.copy()
-    # Fix the first collision of the list
-    collision = collisions.iloc[0]
+    # Fix one collision of the list
+    collision_to_fix_index = random.choice([i for i in range(0, len(collisions))])
+    collision = collisions.iloc[collision_to_fix_index]
     collision_time = collision['collision_time']
     drone1, drone2 = collision['drone1'], collision['drone2']
 
@@ -404,12 +409,14 @@ def fix_calulated_collisions_time(planning_drone: Dict[str, pd.DataFrame], colli
     
     return new_planning
 
+# Fix a near miss by delaying one of the drones involved.
 def fix_near_misses_time(planning_drone: Dict[str, pd.DataFrame], near_misses: pd.DataFrame):
     # Create a copy of the planning to change
     new_planning = planning_drone.copy()
 
-    # Fix the first near miss of the list
-    near_miss = near_misses.iloc[0]
+    # Fix one collision of the list
+    near_miss_to_fix_index = random.choice([i for i in range(0, len(near_misses))])
+    near_miss = near_misses.iloc[near_miss_to_fix_index]
     near_miss_time = near_miss['time']
     drone1, drone2 = near_miss['drone1'], near_miss['drone2']
 
@@ -423,7 +430,8 @@ def fix_near_misses_time(planning_drone: Dict[str, pd.DataFrame], near_misses: p
     new_planning[drone] = push_back_transit_times(planning_drone, near_miss_time, time_offset=2)
 
     return new_planning
-    
+
+# Delay a given drone's planning for one task, between two visits at the charging station.
 def push_back_transit_times(planning: pd.DataFrame, collision_time: pd.Timestamp, time_offset: int):
     # Find the index of the collision
     collision_time_index = planning.index[planning['time'] == collision_time].tolist()
@@ -455,12 +463,25 @@ def push_back_transit_times(planning: pd.DataFrame, collision_time: pd.Timestamp
 
     # If the drone never visits the station after, it's because it's its last trajectory.
     if next_charging_index is None:
-        next_charging_index = len(planning) 
+        last_charging_index = len(planning) 
+    # Find the last index at the charging station for the drone
+    else :
+        for i in range(next_charging_index, len(planning)):
+            if planning.at[i, 'task_type'] == 'RC':
+                last_charging_index = i
+            else:
+                break
 
     # Delay passage time between the two RC times.
-    for i in range(previous_charging_index, next_charging_index+1):
+    for i in range(previous_charging_index, last_charging_index+1):
         new_time = planning.at[i,'time'] + pd.Timedelta(minutes=time_offset)
 
         planning.at[i, 'time'] = new_time
+    
+    # Adjust subsequent tasks if needed to avoid overlaps
+    i = last_charging_index
+    while i + 1 < len(planning) and planning.at[i, 'time'] >= planning.at[i + 1, 'time']:
+        planning.at[i + 1, 'time'] += pd.Timedelta(minutes=time_offset)
+        i += 1
 
     return planning

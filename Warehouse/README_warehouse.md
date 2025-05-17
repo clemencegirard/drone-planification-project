@@ -1,69 +1,116 @@
-## warehouse.py
+# Warehouse generation
 
-`warehouse.py` is one of the most important scripts in the project since it is used to design a tailor-made warehouse. This file contains several classes:
-
-### Classes
-
-1. **WarehouseError**
-   - A custom exception class used to handle errors specific to the warehouse operations, such as invalid coordinates or obstacles.
-
-2. **Warehouse3D**
-   - The main class that represents a 3D warehouse. It includes methods to manage the warehouse layout, add shelves, storage lines, objects, and more. Key functionalities include:
-     - **Initialization**: Creates a 3D matrix to represent the warehouse layout.
-     - **Adding Shelves**: Allows the addition of shelves at specified levels and coordinates.
-     - **Adding Storage Lines**: Marks storage lines on shelves for object placement.
-     - **Adding Objects**: Places objects on shelves or designated storage locations.
-     - **Adding Checkpoints**: Defines checkpoints for navigation and connects them in a graph.
-     - **Pathfinding**: Uses BFS (Breadth-First Search) to compute the shortest path between two points in the warehouse.
-     - **Visualization**: Provides methods to display the warehouse layout and checkpoint graph.
-
-3. **Object**
-   - Represents an object in the warehouse. It includes attributes like `id`, `is_on_shelf`, and coordinates (`row`, `col`, `height`). It also provides a method to move the object to a new location.
-
-### Key Features
-
-- **3D Warehouse Representation**: The warehouse is represented as a 3D matrix, allowing for multi-level storage and navigation.
-- **Customizable Layout**: Users can add shelves, storage lines, objects, and checkpoints to design a warehouse tailored to their needs.
-- **Pathfinding**: The BFS algorithm is used to compute the shortest path between two points, ensuring efficient navigation.
-- **Visualization**: The warehouse layout and checkpoint graph can be visualized using `matplotlib` and `networkx`.
-
-### Usage
-
-To use the `warehouse.py` script, follow these steps:
-
-1. **Initialize the Warehouse**:
-   ```python
-   warehouse = Warehouse3D(name="MyWarehouse", rows=10, cols=10, height=3, mat_capacity=100)
+This module is dedicated to the creation and modelisation of our warehouses. It includes scripts that contain class for object oriented programming and also a builder.
 
 
-## adjacency_matrix.py
+## Warehouse 3D Management System
 
-Tha adjacency matrix is generated from the warehouse matrix. The value at position (i, j) of the warehouse matrix correspond to the category of the case (i, j) in the warehouse, as defined in the dictionnary category_mapping.
+`warehouse.py` est le module principal de gestion d'un entrepôt en 3D. Il permet de modéliser un entrepôt en trois dimensions, de gérer les zones de stockage, les objets, les points de passage et les stations de recharge. Ce module est essentiel pour la planification et l'optimisation des déplacements des drones dans l'entrepôt.
 
-The script `adjacency_matrix.py` goes through the warehouse matrix first on the z axis, then x axis, then y axis.
+### Core Features
 
-Adjacency matrix contains the Manhattan distances for these categories in order : 
-- empty storage line (category 2)
-- full storage line (category 3)
-- checkpoint (catégorie 4)
-- start mat (category 5)
-- finish mat (category 6)
-- charging station (category 7)
+#### Initialisation et Configuration
 
-The script only calculates distances between checkpoint that are connected and relevant categories.
+- **`Warehouse3D(name, rows, cols, height, mat_capacity)`**  
+  Initialise un entrepôt 3D avec les dimensions spécifiées et une capacité de stockage maximale.
 
-This way, it calculates the distance : 
-- checkpoint and all its connected checkpoints
-- checkpoints and storage line
-- checkpoints and objects
-- start mat and finish mat
-- start mat and checkpoint
-- finish mat and checkpoint
-- (charging stations ?)
+#### Visualisation et Sauvegarde
 
-The script generates the adjacency matrix by block for these distances above only and assemble everything in a global matrix.
+- **`display(display=False)`**  
+  Affiche une représentation graphique de l'entrepôt avec les différents éléments (étagères, objets, points de passage, etc.).
+
+- **`save_warehouse_plot(fig)`**  
+  Sauvegarde l'affichage de l'entrepôt sous forme d'image dans un dossier dédié.
+
+#### Gestion des Structures et du Stockage
+
+- **`add_shelf(height, top_left, top_right, bottom_left, bottom_right)`**  
+  Ajoute une étagère à un niveau donné dans l'entrepôt.
+
+- **`add_storage_line(height, c1, c2)`**  
+  Définit une ligne de stockage sur une étagère existante.
+
+- **`add_object(rows, col, level)`**  
+  Place un objet à un emplacement de stockage défini.
+
+#### Gestion des Points de Départ et d'Arrivée
+
+- **`add_start_mat(rows, col, level)`**  
+  Définit une zone de départ pour les drones.
+
+- **`add_finish_mat(rows, col, level)`**  
+  Définit une zone d'arrivée pour les drones.
+
+- **`add_charging_station(rows, col, level)`**  
+  Ajoute une station de recharge pour les drones.
+
+#### Gestion des Points de Passage et Connexions
+
+- **`add_checkpoint(info)`**  
+  Ajoute un point de passage pour faciliter la navigation des drones.
+
+- **`connect_checkpoints(couple)`**  
+  Connecte deux points de passage pour définir un chemin possible dans l'entrepôt.
+
+#### Erreurs et Logs
+
+- **`WarehouseError(Exception)`**  
+  Exception personnalisée pour signaler une erreur de configuration ou d'exécution dans l'entrepôt.
+
+- **`logging.basicConfig(...)`**  
+  Configuration du système de logs pour suivre les événements et erreurs.
 
 
-<img src="../Data_test/adjmatrix_schema.png" alt="Adjacency matrix" width="500" height="350">
-<img src="../Data_test/U_warehouse.png" alt="Matrix" width="300" height="300">
+## Warehouse builder
+
+### `warehouse_builder.py` - Configuration et Construction d'Entrepôts en 3D
+
+Le module `warehouse_builder.py` est conçu pour charger une configuration JSON et construire dynamiquement des entrepôts en 3D à l'aide du module `Warehouse3D`. Il permet d'automatiser la création d'entrepôts en fonction des spécifications définies dans un fichier de configuration.
+
+---
+
+### Fonctionnalités principales
+
+#### **Chargement de la configuration**
+
+- **`load_config_warehouse(config_path="config_warehouses.json")`**  
+  Charge le fichier JSON contenant les informations des entrepôts et la correspondance des catégories.
+
+  - **Entrée** : Chemin vers le fichier de configuration (`config_warehouses.json`).
+  - **Sortie** : 
+    - `warehouses_config` : Dictionnaire contenant les configurations des entrepôts.
+    - `category_mapping` : Dictionnaire mappant les catégories d'objets.
+
+#### **Construction d'un entrepôt à partir de la configuration**
+
+- **`build_warehouse(warehouse_name, warehouses_config)`**  
+  Construit un entrepôt en 3D en fonction du nom spécifié.
+
+  - **Entrée** :  
+    - `warehouse_name` : Nom de l'entrepôt à construire.
+    - `warehouses_config` : Configuration JSON des entrepôts.
+
+  - **Sortie** : Objet `Warehouse3D` correspondant à l'entrepôt construit.
+
+---
+
+###  Processus de construction d'un entrepôt
+
+1. **Initialisation**  
+   - Vérifie si l'entrepôt existe dans la configuration.  
+   - Extrait les dimensions et la capacité de stockage.  
+   - Crée une instance de `Warehouse3D`.
+
+2. **Ajout des structures**  
+   - Ajout des étagères (`add_shelf`).  
+   - Ajout des lignes de stockage (`add_storage_line` pour les horizontales et verticales).  
+
+3. **Ajout des éléments spécifiques**  
+   - Ajout des objets stockés (`add_object`).  
+   - Ajout des points de passage (`add_checkpoint`).  
+   - Connexion des points de passage (`connect_checkpoints`).  
+   - Définition des zones de départ (`add_start_mat`) et d'arrivée (`add_finish_mat`).  
+   - Ajout des stations de recharge (`add_charging_station`).  
+
+4. **Retourne l'entrepôt construit**  
 

@@ -63,6 +63,7 @@
       "start_mat": [[7, 0, 0]],
       "charging_station": [[7, 3, 0]],
       "finish_mat": [[7, 7, 0]],
+
       "checkpoints": [],
       "checkpoint_connection": []
     },
@@ -108,7 +109,6 @@
       "checkpoints": [],
       "checkpoint_connection": []
     },
-
 
     "one_level_U_warehouse": {
       "dimensions": [8, 8, 1],

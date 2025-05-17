@@ -1,0 +1,4 @@
+Configuration: config-D
+Initial cost: 1856742.0
+Final cost: 161064.0
+Respect constraints: False

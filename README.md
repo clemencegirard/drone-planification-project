@@ -75,5 +75,12 @@ The main.py Python file contains the entire pipeline for the project. The user c
 
 ## Expected output
 
+Once the run is over, results of the avoidance algorihtm are available in the Results/planning_boosted folder, divided by warehouse. When a new combination of parameters is being tested, a folder corresponding to this configuration is being created, containing :
+
+- `acceptance_rate_evolutions.png` Evolution of the acceptance rate
+- `cost_evolution.png` Evolution of the cost function 
+- `temp_evolutions.png` Evolution of the temperature
+- `config-..._final_planning_d...` the different optimal plannings saved as CSV files and obtained after each run.
+
 ## Project status
-Work in progress.
+Work done.

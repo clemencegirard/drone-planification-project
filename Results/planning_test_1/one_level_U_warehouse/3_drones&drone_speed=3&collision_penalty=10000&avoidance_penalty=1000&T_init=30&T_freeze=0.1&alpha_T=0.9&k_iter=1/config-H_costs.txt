@@ -1,0 +1,4 @@
+Configuration: config-H
+Initial cost: 459782.0
+Final cost: 64328.0
+Respect constraints: False

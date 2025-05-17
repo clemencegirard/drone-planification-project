@@ -1,0 +1,4 @@
+Configuration: config-J
+Initial cost: 757064.0
+Final cost: 157650.0
+Respect constraints: False

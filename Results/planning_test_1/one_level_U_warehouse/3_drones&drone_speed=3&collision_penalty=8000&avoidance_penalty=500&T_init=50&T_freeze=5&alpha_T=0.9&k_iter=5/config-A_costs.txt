@@ -1,0 +1,4 @@
+Configuration: config-A
+Initial cost: 393130.0
+Final cost: 77220.0
+Respect constraints: False
